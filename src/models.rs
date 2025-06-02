@@ -25,8 +25,8 @@ pub enum AlertCondition {
 impl fmt::Display for AlertCondition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AlertCondition::Above => write!(f, "高于"),
-            AlertCondition::Below => write!(f, "低于"),
+            AlertCondition::Above => write!(f, "Above"),
+            AlertCondition::Below => write!(f, "Below"),
         }
     }
 }

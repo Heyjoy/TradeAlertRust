@@ -1,6 +1,6 @@
-use sqlx::sqlite::SqlitePool;
+use sqlx::{sqlite::SqlitePool, Row};
 use anyhow::Result;
-use crate::models::{Alert, CreateAlertRequest, AlertStatus};
+use crate::models::{Alert, CreateAlertRequest, AlertCondition, AlertStatus};
 
 pub struct Database {
     pool: SqlitePool,
