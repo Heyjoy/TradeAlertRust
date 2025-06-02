@@ -13,6 +13,10 @@ impl Database {
     }
 
     pub async fn create_alert(&self, request: &CreateAlertRequest) -> Result<Alert> {
+        let symbol = &request.symbol;
+        let condition_str = request.condition.to_string().to_lowercase();
+        let condition = condition_str.as_str();
+        let price = request.price;
         let alert = sqlx::query_as!(
             Alert,
             r#"
@@ -21,9 +25,9 @@ impl Database {
             RETURNING id, symbol, condition as "condition: _", price, 
                      status as "status: _", created_at, updated_at, triggered_at
             "#,
-            request.symbol,
-            request.condition as _,
-            request.price,
+            symbol,
+            condition,
+            price,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -113,7 +117,7 @@ impl Database {
 
     pub async fn update_alert(&self, id: i64, request: &CreateAlertRequest) -> Result<Option<Alert>> {
         let symbol = &request.symbol;
-        let condition_str = request.condition.to_string();
+        let condition_str = request.condition.to_string().to_lowercase();
         let condition = condition_str.as_str();
         let price = request.price;
         let result = sqlx::query!(

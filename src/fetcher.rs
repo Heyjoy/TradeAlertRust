@@ -1,71 +1,114 @@
 use anyhow::Result;
 use chrono::Utc;
+use reqwest::Client;
 use serde::Deserialize;
 use sqlx::SqlitePool;
+use std::time::Duration;
+use tokio::time;
+use tracing::{info, error};
+use rand;
 
 #[derive(Debug, Deserialize)]
-pub struct StockPrice {
-    pub symbol: String,
-    pub price: f64,
-    pub volume: i64,
-    pub timestamp: chrono::DateTime<Utc>,
+struct StockPrice {
+    symbol: String,
+    price: f64,
+    volume: i64,
+    timestamp: chrono::DateTime<Utc>,
 }
 
 pub struct PriceFetcher {
-    client: reqwest::Client,
+    client: Client,
     db: SqlitePool,
+    update_interval: Duration,
 }
 
 impl PriceFetcher {
-    pub fn new(db: SqlitePool) -> Self {
+    pub fn new(db: SqlitePool, update_interval: Duration) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: Client::new(),
             db,
+            update_interval,
         }
     }
 
-    /// 获取单个股票的实时价格
-    pub async fn fetch_price(&self, symbol: &str) -> Result<StockPrice> {
-        // Yahoo Finance API URL
-        let url = format!(
-            "https://query1.finance.yahoo.com/v8/finance/chart/{}",
-            symbol
-        );
-
-        let response = self.client
-            .get(&url)
-            .send()
-            .await?
-            .json::<serde_json::Value>()
-            .await?;
-
-        // 解析响应
-        let price = response["chart"]["result"][0]["meta"]["regularMarketPrice"]
-            .as_f64()
-            .ok_or_else(|| anyhow::anyhow!("Failed to get price"))?;
-
-        let volume = response["chart"]["result"][0]["meta"]["regularMarketVolume"]
-            .as_i64()
-            .ok_or_else(|| anyhow::anyhow!("Failed to get volume"))?;
-
-        let stock_price = StockPrice {
-            symbol: symbol.to_string(),
-            price,
-            volume,
-            timestamp: Utc::now(),
-        };
-
-        // 保存到数据库
-        self.save_price(&stock_price).await?;
-
-        Ok(stock_price)
+    pub async fn start(&self) -> Result<()> {
+        info!("Starting price fetcher service...");
+        
+        let mut interval = time::interval(self.update_interval);
+        loop {
+            interval.tick().await;
+            if let Err(e) = self.update_prices().await {
+                error!("Failed to update prices: {}", e);
+            }
+        }
     }
 
-    /// 保存价格到数据库
+    async fn update_prices(&self) -> Result<()> {
+        // 获取所有活跃预警的股票代码
+        let symbols = sqlx::query!(
+            r#"
+            SELECT DISTINCT symbol
+            FROM alerts
+            WHERE status = 'active'
+            "#
+        )
+        .fetch_all(&self.db)
+        .await?;
+
+        for symbol in symbols {
+            match self.fetch_price(&symbol.symbol).await {
+                Ok(price) => {
+                    if let Err(e) = self.save_price(&price).await {
+                        error!("Failed to save price for {}: {}", symbol.symbol, e);
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to fetch price for {}: {}", symbol.symbol, e);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn fetch_price(&self, symbol: &str) -> Result<StockPrice> {
+        // TODO: 实现实际的股票价格API调用
+        // 这里使用模拟数据，价格会有随机变化
+        
+        // 获取上次价格作为基准
+        let last_price = sqlx::query!(
+            r#"
+            SELECT price
+            FROM price_history
+            WHERE symbol = ?
+            ORDER BY timestamp DESC
+            LIMIT 1
+            "#,
+            symbol
+        )
+        .fetch_optional(&self.db)
+        .await?
+        .map(|row| row.price)
+        .unwrap_or(100.0); // 如果没有历史价格，默认从100开始
+
+        // 生成-2%到+2%的随机变化
+        let change_percent = (rand::random::<f64>() - 0.5) * 0.04; // -0.02 到 +0.02
+        let new_price = last_price * (1.0 + change_percent);
+        let new_price = (new_price * 100.0).round() / 100.0; // 保留2位小数
+
+        Ok(StockPrice {
+            symbol: symbol.to_string(),
+            price: new_price,
+            volume: (rand::random::<i64>() % 10000) + 1000, // 1000-11000之间的随机成交量
+            timestamp: Utc::now(),
+        })
+    }
+
     async fn save_price(&self, price: &StockPrice) -> Result<()> {
+        // 保存价格历史
         sqlx::query!(
             r#"
-            INSERT INTO price_history (stock_symbol, price, volume, timestamp)
+            INSERT INTO price_history (symbol, price, volume, timestamp)
             VALUES (?, ?, ?, ?)
             "#,
             price.symbol,
@@ -76,81 +119,58 @@ impl PriceFetcher {
         .execute(&self.db)
         .await?;
 
-        // 更新所有相关的活跃提醒的当前价格
-        sqlx::query!(
-            r#"
-            UPDATE alerts
-            SET current_price = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE stock_symbol = ?
-              AND status = 'active'
-            "#,
-            price.price,
-            price.symbol,
-        )
-        .execute(&self.db)
-        .await?;
+        // 检查并更新相关预警
+        self.check_alerts(&price.symbol, price.price).await?;
 
         Ok(())
     }
 
-    /// 检查并触发提醒
-    pub async fn check_alerts(&self) -> Result<Vec<i64>> {
-        let mut triggered_alerts = Vec::new();
-
-        // 获取所有活跃的提醒
+    async fn check_alerts(&self, symbol: &str, current_price: f64) -> Result<()> {
         let alerts = sqlx::query!(
             r#"
-            SELECT id, stock_symbol, condition, target_price, current_price, email
+            SELECT id, condition, price
             FROM alerts
-            WHERE status = 'active'
-              AND current_price IS NOT NULL
-            "#
+            WHERE symbol = ? AND status = 'active'
+            "#,
+            symbol
         )
         .fetch_all(&self.db)
         .await?;
 
         for alert in alerts {
             let triggered = match alert.condition.as_str() {
-                "above" => alert.current_price.unwrap_or_default() > alert.target_price,
-                "below" => alert.current_price.unwrap_or_default() < alert.target_price,
+                "above" => current_price >= alert.price,
+                "below" => current_price <= alert.price,
                 _ => false,
             };
 
             if triggered {
-                // 更新提醒状态
-                sqlx::query!(
-                    r#"
-                    UPDATE alerts
-                    SET status = 'triggered',
-                        triggered_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                    "#,
-                    alert.id
-                )
-                .execute(&self.db)
-                .await?;
-
-                // 记录触发历史
-                sqlx::query!(
-                    r#"
-                    INSERT INTO alert_history 
-                    (alert_id, stock_symbol, triggered_price, target_price, email)
-                    VALUES (?, ?, ?, ?, ?)
-                    "#,
-                    alert.id,
-                    alert.stock_symbol,
-                    alert.current_price,
-                    alert.target_price,
-                    alert.email
-                )
-                .execute(&self.db)
-                .await?;
-
-                triggered_alerts.push(alert.id);
+                if let Some(alert_id) = alert.id {
+                    if let Err(e) = self.mark_alert_triggered(alert_id).await {
+                        error!("Failed to mark alert {:?} as triggered: {}", alert_id, e);
+                    }
+                }
             }
         }
 
-        Ok(triggered_alerts.into_iter().flatten().collect())
+        Ok(())
+    }
+
+    async fn mark_alert_triggered(&self, alert_id: i64) -> Result<()> {
+        sqlx::query!(
+            r#"
+            UPDATE alerts
+            SET status = 'triggered',
+                triggered_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND status = 'active'
+            "#,
+            alert_id
+        )
+        .execute(&self.db)
+        .await?;
+
+        info!("Alert {} has been triggered", alert_id);
+        Ok(())
     }
 } 

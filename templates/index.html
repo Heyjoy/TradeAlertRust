@@ -20,6 +20,12 @@
 
     .alert-info {
         display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .alert-info-row {
+        display: flex;
         align-items: center;
         gap: 1rem;
         flex-wrap: wrap;
@@ -33,12 +39,98 @@
 
     .alert-info-item i {
         color: var(--secondary-color);
+        width: 16px;
+        text-align: center;
     }
 
     .alert-actions {
         display: flex;
         gap: 0.5rem;
         margin-top: 1rem;
+    }
+
+    .current-price {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: var(--primary-color);
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+        display: inline-block;
+        min-width: 100px;
+        text-align: center;
+    }
+
+    .price-container {
+        background: white;
+        padding: 0.75rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        margin: 0.5rem 0;
+    }
+
+    .price-comparison {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .target-price {
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    .price-gap {
+        font-size: 0.875rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+
+    .price-gap.close {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .price-gap.far {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .price-gap.very-close {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    .price-status {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .price-status.approaching {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .price-status.triggered {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .price-loading {
+        color: #666;
+        font-style: italic;
     }
 
     .price-change {
@@ -93,6 +185,15 @@
         color: white;
     }
 
+    .alert-card.alert-triggered {
+        border-left: 4px solid #28a745;
+        background: linear-gradient(135deg, #f8fff9 0%, #e8f5e8 100%);
+    }
+
+    .alert-card.alert-triggered .card-header {
+        background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+    }
+
     @media (max-width: 768px) {
         .alert-info {
             flex-direction: column;
@@ -106,6 +207,12 @@
 
         .alert-actions .btn {
             width: 100%;
+        }
+
+        .price-comparison {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
         }
     }
 </style>
@@ -123,7 +230,7 @@
     <div class="row">
         {% for alert in alerts %}
         <div class="col-12 col-md-6 col-lg-4">
-            <div class="card alert-card">
+            <div class="card alert-card" data-alert-id="{{ alert.id }}" data-symbol="{{ alert.symbol }}">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
                         <i class="fas fa-chart-line me-2"></i>{{ alert.symbol }}
@@ -140,18 +247,38 @@
                 </div>
                 <div class="card-body">
                     <div class="alert-info">
-                        <div class="alert-info-item">
-                            <i class="fas fa-bullseye"></i>
-                            <span>{{ alert.condition }} {{ alert.price }}</span>
+                        <div class="alert-info-row">
+                            <div class="alert-info-item">
+                                <i class="fas fa-bullseye"></i>
+                                <span class="target-price">目标: {{ alert.condition }} ${{ alert.price }}</span>
+                            </div>
+                            <div class="alert-info-item">
+                                <i class="fas fa-clock"></i>
+                                <span>{{ alert.created_at }}</span>
+                            </div>
                         </div>
-                        <div class="alert-info-item">
-                            <i class="fas fa-clock"></i>
-                            <span>创建于 {{ alert.created_at }}</span>
+                        
+                        <div class="price-container">
+                            <div class="price-comparison">
+                                <div>
+                                    <i class="fas fa-dollar-sign"></i>
+                                    <span style="margin-left: 0.5rem;">当前价格</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="current-price" data-symbol="{{ alert.symbol }}" data-target="{{ alert.price }}" data-condition="{{ alert.condition }}">
+                                        <span class="price-loading">加载中...</span>
+                                    </span>
+                                    <span class="price-gap" data-symbol="{{ alert.symbol }}"></span>
+                                </div>
+                            </div>
                         </div>
+                        
                         {% if alert.triggered_at.is_some() %}
-                        <div class="alert-info-item">
-                            <i class="fas fa-bell"></i>
-                            <span>触发于 {{ alert.triggered_at.as_ref().unwrap() }}</span>
+                        <div class="alert-info-row">
+                            <div class="alert-info-item">
+                                <i class="fas fa-bell"></i>
+                                <span>触发于 {{ alert.triggered_at.as_ref().unwrap() }}</span>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -186,39 +313,121 @@
 
 {% block extra_js %}
 <script>
-    function editAlert(id) {
-        window.location.href = '/alerts/' + id + '/edit';
-    }
+$(document).ready(function() {
+    // 加载所有股票的当前价格
+    loadAllPrices();
+    
+    // 每30秒刷新一次价格
+    setInterval(loadAllPrices, 30000);
+});
 
-    function deleteAlert(id) {
-        confirmAction('确定要删除这个预警吗？', function() {
-            showLoading();
-            $.ajax({
-                url: '/api/alerts/' + id,
-                method: 'DELETE',
-                success: function() {
-                    showToast('预警已删除');
-                    location.reload();
-                },
-                error: function(xhr) {
-                    showToast('删除失败: ' + (xhr.responseJSON ? xhr.responseJSON.message : '未知错误'), 'danger');
-                },
-                complete: function() {
-                    hideLoading();
-                }
-            });
+function loadAllPrices() {
+    $('.current-price').each(function() {
+        const symbol = $(this).data('symbol');
+        if (symbol) {
+            loadPrice(symbol, $(this));
+        }
+    });
+}
+
+function loadPrice(symbol, priceElement) {
+    $.get(`/api/prices/${symbol}/latest`)
+        .done(function(data) {
+            const price = parseFloat(data.price);
+            const target = parseFloat(priceElement.data('target'));
+            const condition = priceElement.data('condition');
+            
+            // 更新价格显示
+            priceElement.html(`$${price.toFixed(2)}`);
+            
+            // 计算价格差距并显示状态
+            const gapElement = priceElement.siblings('.price-gap');
+            updatePriceGap(gapElement, price, target, condition);
+            
+            // 获取对应的预警信息来判断状态
+            const alertCard = priceElement.closest('.alert-card');
+            updatePriceStatus(alertCard, price, target, condition);
+        })
+        .fail(function() {
+            priceElement.html('<span class="text-muted">暂无数据</span>');
+        });
+}
+
+function updatePriceGap(gapElement, currentPrice, targetPrice, condition) {
+    const gap = Math.abs(currentPrice - targetPrice);
+    const percentage = (gap / targetPrice * 100).toFixed(1);
+    
+    let gapText = '';
+    let gapClass = '';
+    
+    if (condition === 'Above') {
+        const diff = targetPrice - currentPrice;
+        if (diff <= 0) {
+            gapText = '已达到';
+            gapClass = 'very-close';
+        } else if (diff <= targetPrice * 0.02) { // 2%以内
+            gapText = `还差 $${diff.toFixed(2)}`;
+            gapClass = 'very-close';
+        } else if (diff <= targetPrice * 0.05) { // 5%以内
+            gapText = `还差 $${diff.toFixed(2)}`;
+            gapClass = 'close';
+        } else {
+            gapText = `还差 $${diff.toFixed(2)}`;
+            gapClass = 'far';
+        }
+    } else { // Below
+        const diff = currentPrice - targetPrice;
+        if (diff <= 0) {
+            gapText = '已达到';
+            gapClass = 'very-close';
+        } else if (diff <= targetPrice * 0.02) { // 2%以内
+            gapText = `超出 $${diff.toFixed(2)}`;
+            gapClass = 'very-close';
+        } else if (diff <= targetPrice * 0.05) { // 5%以内
+            gapText = `超出 $${diff.toFixed(2)}`;
+            gapClass = 'close';
+        } else {
+            gapText = `超出 $${diff.toFixed(2)}`;
+            gapClass = 'far';
+        }
+    }
+    
+    gapElement.text(gapText).removeClass('close far very-close').addClass(gapClass);
+}
+
+function updatePriceStatus(alertCard, currentPrice, targetPrice, condition) {
+    // 这里可以根据价格接近程度更新卡片的视觉效果
+    const isTriggered = (condition === 'Above' && currentPrice >= targetPrice) ||
+                       (condition === 'Below' && currentPrice <= targetPrice);
+    
+    if (isTriggered) {
+        alertCard.addClass('alert-triggered');
+    } else {
+        alertCard.removeClass('alert-triggered');
+    }
+}
+
+function editAlert(alertId) {
+    window.location.href = `/alerts/${alertId}/edit`;
+}
+
+function deleteAlert(alertId) {
+    if (confirm('确定要删除这个预警吗？')) {
+        $.ajax({
+            url: `/api/alerts/${alertId}`,
+            method: 'DELETE',
+            success: function() {
+                location.reload();
+            },
+            error: function() {
+                alert('删除失败，请重试');
+            }
         });
     }
+}
 
-    function refreshAlerts() {
-        showLoading();
-        location.reload();
-    }
-
-    let refreshInterval = setInterval(refreshAlerts, 30000);
-
-    $(window).on('unload', function() {
-        clearInterval(refreshInterval);
-    });
+function refreshAlerts() {
+    location.reload();
+}
 </script>
 {% endblock %} 

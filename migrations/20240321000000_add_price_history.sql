@@ -1,0 +1,16 @@
+-- Create price history table
+CREATE TABLE IF NOT EXISTS price_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    price REAL NOT NULL,
+    volume INTEGER NOT NULL,
+    timestamp DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_price_history_symbol ON price_history(symbol);
+CREATE INDEX IF NOT EXISTS idx_price_history_timestamp ON price_history(timestamp);
+
+-- Add comment to table
+-- COMMENT ON TABLE price_history IS 'Stores historical price data for stocks'; 

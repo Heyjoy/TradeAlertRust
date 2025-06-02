@@ -2,6 +2,7 @@ mod config;
 mod db;
 mod templates;
 mod models;
+mod fetcher;
 
 use axum::{
     routing::get,
@@ -14,6 +15,7 @@ use axum::{
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use std::sync::Arc;
+use std::time::Duration;
 use crate::models::{CreateAlertRequest, AlertResponse};
 use crate::templates::{IndexTemplate, AlertFormTemplate};
 use askama::Template;
@@ -39,14 +41,30 @@ async fn main() -> anyhow::Result<()> {
     let db = Arc::new(db::Database::new(&config.database.url).await?);
 
     // Create application state
-    let state = AppState { db };
+    let state = AppState { db: db.clone() };
+
+    // Initialize price fetcher
+    let fetcher = fetcher::PriceFetcher::new(
+        db.pool().clone(),
+        Duration::from_secs(30), // 每30秒更新一次价格
+    );
+
+    // Start price fetcher in a separate task
+    tokio::spawn(async move {
+        if let Err(e) = fetcher.start().await {
+            tracing::error!("Price fetcher service failed: {}", e);
+        }
+    });
 
     // Build our application with a route
     let app = Router::new()
         .route("/", get(index_page))
         .route("/alerts/new", get(new_alert_form))
+        .route("/alerts/:id/edit", get(edit_alert_form))
         .route("/api/alerts", get(list_alerts).post(create_alert))
         .route("/api/alerts/:id", get(get_alert).delete(delete_alert).put(update_alert))
+        .route("/api/prices/:symbol", get(get_price_history))
+        .route("/api/prices/:symbol/latest", get(get_latest_price))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -160,6 +178,109 @@ async fn new_alert_form() -> impl IntoResponse {
         Err(e) => {
             tracing::error!("Failed to render template: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to render template").into_response()
+        }
+    }
+}
+
+// 编辑预警表单
+async fn edit_alert_form(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> impl IntoResponse {
+    match state.db.get_alert(id).await {
+        Ok(Some(alert)) => {
+            let template = AlertFormTemplate::new(Some(alert));
+            match template.render() {
+                Ok(html) => Html(html).into_response(),
+                Err(e) => {
+                    tracing::error!("Failed to render template: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to render template").into_response()
+                }
+            }
+        }
+        Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to get alert: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get alert").into_response()
+        }
+    }
+}
+
+// 获取股票价格历史
+async fn get_price_history(
+    State(state): State<AppState>,
+    Path(symbol): Path<String>,
+) -> impl IntoResponse {
+    let result = sqlx::query!(
+        r#"
+        SELECT price, volume, timestamp, created_at
+        FROM price_history
+        WHERE symbol = ?
+        ORDER BY timestamp DESC
+        LIMIT 100
+        "#,
+        symbol
+    )
+    .fetch_all(state.db.pool())
+    .await;
+
+    match result {
+        Ok(prices) => {
+            let price_data: Vec<_> = prices.into_iter().map(|row| {
+                serde_json::json!({
+                    "price": row.price,
+                    "volume": row.volume,
+                    "timestamp": row.timestamp,
+                    "created_at": row.created_at
+                })
+            }).collect();
+            
+            Json(serde_json::json!({
+                "symbol": symbol,
+                "prices": price_data
+            })).into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to get price history for {}: {}", symbol, e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get price history").into_response()
+        }
+    }
+}
+
+// 获取股票最新价格
+async fn get_latest_price(
+    State(state): State<AppState>,
+    Path(symbol): Path<String>,
+) -> impl IntoResponse {
+    let result = sqlx::query!(
+        r#"
+        SELECT price, volume, timestamp, created_at
+        FROM price_history
+        WHERE symbol = ?
+        ORDER BY timestamp DESC
+        LIMIT 1
+        "#,
+        symbol
+    )
+    .fetch_optional(state.db.pool())
+    .await;
+
+    match result {
+        Ok(Some(row)) => {
+            Json(serde_json::json!({
+                "symbol": symbol,
+                "price": row.price,
+                "volume": row.volume,
+                "timestamp": row.timestamp,
+                "created_at": row.created_at
+            })).into_response()
+        }
+        Ok(None) => {
+            (StatusCode::NOT_FOUND, "No price data found").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to get latest price for {}: {}", symbol, e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get latest price").into_response()
         }
     }
 } 
