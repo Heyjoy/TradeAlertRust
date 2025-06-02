@@ -9,6 +9,7 @@ use axum::{
     extract::{State, Path, Json},
     response::{IntoResponse, Html},
     http::StatusCode,
+    routing::put,
 };
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -45,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/", get(index_page))
         .route("/alerts/new", get(new_alert_form))
         .route("/api/alerts", get(list_alerts).post(create_alert))
-        .route("/api/alerts/:id", get(get_alert).delete(delete_alert))
+        .route("/api/alerts/:id", get(get_alert).delete(delete_alert).put(update_alert))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -132,6 +133,21 @@ async fn delete_alert(
         Err(e) => {
             tracing::error!("Failed to delete alert: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete alert").into_response()
+        }
+    }
+}
+
+async fn update_alert(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(payload): Json<CreateAlertRequest>,
+) -> impl IntoResponse {
+    match state.db.update_alert(id, &payload).await {
+        Ok(Some(alert)) => Json(AlertResponse::from(alert)).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to update alert: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to update alert").into_response()
         }
     }
 }

@@ -111,6 +111,32 @@ impl Database {
         Ok(result.rows_affected() > 0)
     }
 
+    pub async fn update_alert(&self, id: i64, request: &CreateAlertRequest) -> Result<Option<Alert>> {
+        let symbol = &request.symbol;
+        let condition_str = request.condition.to_string();
+        let condition = condition_str.as_str();
+        let price = request.price;
+        let result = sqlx::query!(
+            r#"
+            UPDATE alerts
+            SET symbol = ?, condition = ?, price = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            "#,
+            symbol,
+            condition,
+            price,
+            id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() > 0 {
+            self.get_alert(id).await
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
     }
