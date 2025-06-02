@@ -1,0 +1,15 @@
+# Ignore build artifacts (target directory)
+/target
+
+# Ignore .env (dotenv file) (if you use one)
+/.env
+
+# Ignore SQLite database file (trade_alert.db)
+/trade_alert.db
+
+# Ignore Cargo.lock (if you are building a library, otherwise you may choose to commit it)
+# /Cargo.lock
+
+# Ignore IDE or editor files (optional, if you use .vscode, .idea, etc.)
+/.vscode
+/.idea 
