@@ -7,13 +7,15 @@ use axum::{
     routing::get,
     Router,
     extract::{State, Path, Json},
-    response::IntoResponse,
+    response::{IntoResponse, Html},
     http::StatusCode,
 };
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use std::sync::Arc;
 use crate::models::{CreateAlertRequest, AlertResponse};
+use crate::templates::IndexTemplate;
+use askama::Template;
 
 // 应用程序状态
 #[derive(Clone)]
@@ -40,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Build our application with a route
     let app = Router::new()
-        .route("/", get(hello_world))
+        .route("/", get(index_page))
         .route("/api/alerts", get(list_alerts).post(create_alert))
         .route("/api/alerts/:id", get(get_alert).delete(delete_alert))
         .layer(TraceLayer::new_for_http())
@@ -57,10 +59,26 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn hello_world(
-    State(_state): State<AppState>,
-) -> &'static str {
-    "Hello, World!"
+// 首页处理函数
+async fn index_page(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    match state.db.list_alerts().await {
+        Ok(alerts) => {
+            let template = IndexTemplate::new(alerts);
+            match template.render() {
+                Ok(html) => Html(html).into_response(),
+                Err(e) => {
+                    tracing::error!("Failed to render template: {}", e);
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to render template").into_response()
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to list alerts: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to list alerts").into_response()
+        }
+    }
 }
 
 // API handlers
