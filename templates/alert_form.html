@@ -108,8 +108,8 @@
             <label for="condition" class="form-label">预警条件</label>
             <select class="form-select" id="condition" name="condition" required>
                 <option value="">请选择条件</option>
-                <option value="Above">价格高于</option>
-                <option value="Below">价格低于</option>
+                <option value="Above" {% if alert.is_some() && alert.as_ref().unwrap().condition == "Above" %}selected{% endif %}>价格高于</option>
+                <option value="Below" {% if alert.is_some() && alert.as_ref().unwrap().condition == "Below" %}selected{% endif %}>价格低于</option>
             </select>
         </div>
 

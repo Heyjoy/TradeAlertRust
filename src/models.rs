@@ -79,9 +79,37 @@ pub struct AlertResponse {
     pub triggered_at: Option<NaiveDateTime>,
 }
 
+// 用于模板渲染的 Alert 结构体
+#[derive(Debug)]
+pub struct AlertForTemplate {
+    pub id: i64,
+    pub symbol: String,
+    pub condition: String,
+    pub price: f64,
+    pub status: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub triggered_at: Option<String>,
+}
+
+impl From<Alert> for AlertForTemplate {
+    fn from(alert: Alert) -> Self {
+        Self {
+            id: alert.id,
+            symbol: alert.symbol,
+            condition: alert.condition.to_string(),
+            price: alert.price,
+            status: alert.status.to_string(),
+            created_at: alert.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+            updated_at: alert.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+            triggered_at: alert.triggered_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
+        }
+    }
+}
+
 impl From<Alert> for AlertResponse {
     fn from(alert: Alert) -> Self {
-        AlertResponse {
+        Self {
             id: alert.id,
             symbol: alert.symbol,
             condition: alert.condition,

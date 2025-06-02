@@ -151,7 +151,7 @@
                         {% if alert.triggered_at.is_some() %}
                         <div class="alert-info-item">
                             <i class="fas fa-bell"></i>
-                            <span>触发于 {{ alert.triggered_at.unwrap() }}</span>
+                            <span>触发于 {{ alert.triggered_at.as_ref().unwrap() }}</span>
                         </div>
                         {% endif %}
                     </div>
@@ -187,21 +187,21 @@
 {% block extra_js %}
 <script>
     function editAlert(id) {
-        window.location.href = `/alerts/${id}/edit`;
+        window.location.href = '/alerts/' + id + '/edit';
     }
 
     function deleteAlert(id) {
         confirmAction('确定要删除这个预警吗？', function() {
             showLoading();
             $.ajax({
-                url: `/api/alerts/${id}`,
+                url: '/api/alerts/' + id,
                 method: 'DELETE',
                 success: function() {
                     showToast('预警已删除');
                     location.reload();
                 },
                 error: function(xhr) {
-                    showToast('删除失败: ' + (xhr.responseJSON?.message || '未知错误'), 'danger');
+                    showToast('删除失败: ' + (xhr.responseJSON ? xhr.responseJSON.message : '未知错误'), 'danger');
                 },
                 complete: function() {
                     hideLoading();

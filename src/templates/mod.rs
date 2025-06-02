@@ -1,5 +1,5 @@
 use askama::Template;
-use crate::models::Alert;
+use crate::models::{Alert, AlertForTemplate};
 
 #[derive(Template)]
 #[template(path = "base.html", escape = "html")]
@@ -11,14 +11,14 @@ pub struct BaseTemplate {
 #[template(path = "index.html", escape = "html")]
 pub struct IndexTemplate {
     pub base: BaseTemplate,
-    pub alerts: Vec<Alert>,
+    pub alerts: Vec<AlertForTemplate>,
 }
 
 #[derive(Template)]
 #[template(path = "alert_form.html", escape = "html")]
 pub struct AlertFormTemplate {
     pub base: BaseTemplate,
-    pub alert: Option<Alert>,
+    pub alert: Option<AlertForTemplate>,
 }
 
 impl IndexTemplate {
@@ -27,7 +27,7 @@ impl IndexTemplate {
             base: BaseTemplate {
                 title: "预警列表".to_string(),
             },
-            alerts,
+            alerts: alerts.into_iter().map(AlertForTemplate::from).collect(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl AlertFormTemplate {
             base: BaseTemplate {
                 title: if alert.is_some() { "编辑预警" } else { "创建预警" }.to_string(),
             },
-            alert,
+            alert: alert.map(AlertForTemplate::from),
         }
     }
 } 
