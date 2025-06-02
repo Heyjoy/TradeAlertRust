@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE alerts\n            SET status = 'triggered', \n                triggered_at = CURRENT_TIMESTAMP,\n                updated_at = CURRENT_TIMESTAMP\n            WHERE id = ? AND status = 'active'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "feb0f249a9a61d2fc13097be7ee39680fe88c27745e8ce9b531a300d8ba4a061"
+}

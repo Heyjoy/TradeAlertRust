@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE alerts\n            SET status = ?, updated_at = CURRENT_TIMESTAMP\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "09e2bd6d2face5d9096d0d1d21f0066d4738951812d79e621b1157d55d19ba1b"
+}

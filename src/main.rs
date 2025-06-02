@@ -1,15 +1,19 @@
 mod config;
 mod db;
 mod templates;
+mod models;
 
 use axum::{
     routing::get,
     Router,
-    extract::State,
+    extract::{State, Path, Json},
+    response::IntoResponse,
+    http::StatusCode,
 };
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use std::sync::Arc;
+use crate::models::{CreateAlertRequest, AlertResponse};
 
 // 应用程序状态
 #[derive(Clone)]
@@ -37,6 +41,8 @@ async fn main() -> anyhow::Result<()> {
     // Build our application with a route
     let app = Router::new()
         .route("/", get(hello_world))
+        .route("/api/alerts", get(list_alerts).post(create_alert))
+        .route("/api/alerts/:id", get(get_alert).delete(delete_alert))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -52,8 +58,61 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn hello_world(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> &'static str {
-    // 现在我们可以使用 state.db 来访问数据库
     "Hello, World!"
+}
+
+// API handlers
+async fn create_alert(
+    State(state): State<AppState>,
+    Json(payload): Json<CreateAlertRequest>,
+) -> impl IntoResponse {
+    match state.db.create_alert(&payload).await {
+        Ok(alert) => (StatusCode::CREATED, Json(AlertResponse::from(alert))).into_response(),
+        Err(e) => {
+            tracing::error!("Failed to create alert: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create alert").into_response()
+        }
+    }
+}
+
+async fn list_alerts(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    match state.db.list_alerts().await {
+        Ok(alerts) => Json(alerts.into_iter().map(AlertResponse::from).collect::<Vec<_>>()).into_response(),
+        Err(e) => {
+            tracing::error!("Failed to list alerts: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to list alerts").into_response()
+        }
+    }
+}
+
+async fn get_alert(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> impl IntoResponse {
+    match state.db.get_alert(id).await {
+        Ok(Some(alert)) => Json(AlertResponse::from(alert)).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to get alert: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get alert").into_response()
+        }
+    }
+}
+
+async fn delete_alert(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> impl IntoResponse {
+    match state.db.delete_alert(id).await {
+        Ok(true) => StatusCode::NO_CONTENT.into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to delete alert: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete alert").into_response()
+        }
+    }
 } 
