@@ -10,4 +10,7 @@ level = "info"
 
 [scheduler]
 # Default cron schedule for checking alerts (every 5 minutes)
-default_schedule = "*/5 * * * *" 
+default_schedule = "*/5 * * * *"
+
+[price_fetcher]
+update_interval_secs = 1

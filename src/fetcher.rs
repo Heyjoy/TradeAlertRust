@@ -5,8 +5,39 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 use std::time::Duration;
 use tokio::time;
-use tracing::{info, error};
+use tracing::{info, error, warn};
 use rand;
+
+#[derive(Debug, Deserialize)]
+struct YahooQuoteResponse {
+    chart: YahooChart,
+}
+
+#[derive(Debug, Deserialize)]
+struct YahooChart {
+    result: Vec<YahooResult>,
+    error: Option<YahooError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct YahooResult {
+    meta: YahooMeta,
+}
+
+#[derive(Debug, Deserialize)]
+struct YahooMeta {
+    #[serde(rename = "regularMarketPrice")]
+    regular_market_price: Option<f64>,
+    #[serde(rename = "regularMarketVolume")]
+    regular_market_volume: Option<i64>,
+    symbol: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct YahooError {
+    code: String,
+    description: String,
+}
 
 #[derive(Debug, Deserialize)]
 struct StockPrice {
@@ -64,6 +95,13 @@ impl PriceFetcher {
                 }
                 Err(e) => {
                     error!("Failed to fetch price for {}: {}", symbol.symbol, e);
+                    // 如果API失败，尝试使用模拟数据作为后备
+                    if let Ok(fallback_price) = self.fetch_fallback_price(&symbol.symbol).await {
+                        warn!("Using fallback price for {}", symbol.symbol);
+                        if let Err(e) = self.save_price(&fallback_price).await {
+                            error!("Failed to save fallback price for {}: {}", symbol.symbol, e);
+                        }
+                    }
                 }
             }
         }
@@ -72,9 +110,50 @@ impl PriceFetcher {
     }
 
     async fn fetch_price(&self, symbol: &str) -> Result<StockPrice> {
-        // TODO: 实现实际的股票价格API调用
-        // 这里使用模拟数据，价格会有随机变化
-        
+        let url = format!(
+            "https://query1.finance.yahoo.com/v8/finance/chart/{}",
+            symbol
+        );
+
+        info!("Fetching price for {} from Yahoo Finance", symbol);
+
+        let response = self.client
+            .get(&url)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .timeout(Duration::from_secs(10))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error: {}", response.status()));
+        }
+
+        let yahoo_response: YahooQuoteResponse = response.json().await?;
+
+        if let Some(error) = yahoo_response.chart.error {
+            return Err(anyhow::anyhow!("Yahoo Finance error: {} - {}", error.code, error.description));
+        }
+
+        let result = yahoo_response.chart.result
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No data returned for symbol {}", symbol))?;
+
+        let price = result.meta.regular_market_price
+            .ok_or_else(|| anyhow::anyhow!("No price data for symbol {}", symbol))?;
+
+        let volume = result.meta.regular_market_volume.unwrap_or(0);
+
+        Ok(StockPrice {
+            symbol: symbol.to_string(),
+            price,
+            volume,
+            timestamp: Utc::now(),
+        })
+    }
+
+    // 后备方案：使用模拟数据
+    async fn fetch_fallback_price(&self, symbol: &str) -> Result<StockPrice> {
         // 获取上次价格作为基准
         let last_price = sqlx::query!(
             r#"
@@ -91,8 +170,8 @@ impl PriceFetcher {
         .map(|row| row.price)
         .unwrap_or(100.0); // 如果没有历史价格，默认从100开始
 
-        // 生成-2%到+2%的随机变化
-        let change_percent = (rand::random::<f64>() - 0.5) * 0.04; // -0.02 到 +0.02
+        // 生成-1%到+1%的随机变化
+        let change_percent = (rand::random::<f64>() - 0.5) * 0.02; // -0.01 到 +0.01
         let new_price = last_price * (1.0 + change_percent);
         let new_price = (new_price * 100.0).round() / 100.0; // 保留2位小数
 
@@ -105,6 +184,8 @@ impl PriceFetcher {
     }
 
     async fn save_price(&self, price: &StockPrice) -> Result<()> {
+        info!("Saving price for {}: ${:.2}", price.symbol, price.price);
+        
         // 保存价格历史
         sqlx::query!(
             r#"
@@ -148,6 +229,9 @@ impl PriceFetcher {
                 if let Some(alert_id) = alert.id {
                     if let Err(e) = self.mark_alert_triggered(alert_id).await {
                         error!("Failed to mark alert {:?} as triggered: {}", alert_id, e);
+                    } else {
+                        info!("🔔 Alert {} triggered! {} is now ${:.2} (target: {} ${:.2})", 
+                              alert_id, symbol, current_price, alert.condition, alert.price);
                     }
                 }
             }

@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize price fetcher
     let fetcher = fetcher::PriceFetcher::new(
         db.pool().clone(),
-        Duration::from_secs(30), // 每30秒更新一次价格
+        Duration::from_secs(config.price_fetcher.update_interval_secs),
     );
 
     // Start price fetcher in a separate task

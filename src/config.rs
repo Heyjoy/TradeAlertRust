@@ -23,11 +23,17 @@ pub struct SchedulerConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct PriceFetcherConfig {
+    pub update_interval_secs: u64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub logging: LoggingConfig,
     pub scheduler: SchedulerConfig,
+    pub price_fetcher: PriceFetcherConfig,
 }
 
 impl Config {
