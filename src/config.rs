@@ -22,9 +22,15 @@ pub struct SchedulerConfig {
     pub default_schedule: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct PriceFetcherConfig {
     pub update_interval_secs: u64,
+    pub cache_ttl_secs: u64,
+    pub max_retries: u32,
+    pub max_concurrent_requests: usize,
+    pub max_requests_per_hour: u64,
+    pub request_timeout_secs: u64,
+    pub pool_idle_timeout_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]

@@ -7,6 +7,12 @@ use std::time::Duration;
 use tokio::time;
 use tracing::{info, error, warn};
 use rand;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use tokio::sync::Semaphore;
+use std::sync::atomic::{AtomicU64, Ordering};
+use crate::config::PriceFetcherConfig;
 
 #[derive(Debug, Deserialize)]
 struct YahooQuoteResponse {
@@ -47,34 +53,67 @@ struct StockPrice {
     timestamp: chrono::DateTime<Utc>,
 }
 
-pub struct PriceFetcher {
+// 缓存结构
+#[derive(Debug, Clone)]
+struct PriceCache {
+    price: f64,
+    volume: i64,
+    timestamp: chrono::DateTime<Utc>,
+}
+
+// 价格服务状态
+pub struct PriceService {
     client: Client,
     db: SqlitePool,
     update_interval: Duration,
+    cache: Arc<RwLock<HashMap<String, PriceCache>>>,
+    semaphore: Arc<Semaphore>,
+    request_count: AtomicU64,
+    last_reset: AtomicU64,
 }
 
-impl PriceFetcher {
-    pub fn new(db: SqlitePool, update_interval: Duration) -> Self {
+impl PriceService {
+    pub fn new(db: SqlitePool, config: &PriceFetcherConfig) -> Self {
         Self {
-            client: Client::new(),
+            client: Client::builder()
+                .timeout(Duration::from_secs(config.request_timeout_secs))
+                .pool_idle_timeout(Duration::from_secs(config.pool_idle_timeout_secs))
+                .build()
+                .expect("Failed to create HTTP client"),
             db,
-            update_interval,
+            update_interval: Duration::from_secs(config.update_interval_secs),
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            semaphore: Arc::new(Semaphore::new(config.max_concurrent_requests)),
+            request_count: AtomicU64::new(0),
+            last_reset: AtomicU64::new(Utc::now().timestamp() as u64),
         }
     }
 
-    pub async fn start(&self) -> Result<()> {
-        info!("Starting price fetcher service...");
+    pub async fn start(&self, config: &PriceFetcherConfig) -> Result<()> {
+        info!("Starting price service...");
         
         let mut interval = time::interval(self.update_interval);
         loop {
             interval.tick().await;
-            if let Err(e) = self.update_prices().await {
+            if let Err(e) = self.update_prices(config).await {
                 error!("Failed to update prices: {}", e);
             }
+            // 每小时重置请求计数
+            self.check_and_reset_request_count().await;
         }
     }
 
-    async fn update_prices(&self) -> Result<()> {
+    async fn check_and_reset_request_count(&self) {
+        let now = Utc::now().timestamp() as u64;
+        let last_reset = self.last_reset.load(Ordering::Relaxed);
+        if now - last_reset >= 3600 { // 1小时
+            self.request_count.store(0, Ordering::Relaxed);
+            self.last_reset.store(now, Ordering::Relaxed);
+            info!("Reset request count");
+        }
+    }
+
+    async fn update_prices(&self, config: &PriceFetcherConfig) -> Result<()> {
         // 获取所有活跃预警的股票代码
         let symbols = sqlx::query!(
             r#"
@@ -87,8 +126,26 @@ impl PriceFetcher {
         .await?;
 
         for symbol in symbols {
-            match self.fetch_price(&symbol.symbol).await {
+            // 检查缓存
+            if let Some(cached) = self.get_cached_price(&symbol.symbol).await {
+                if Utc::now() - cached.timestamp < chrono::Duration::seconds(config.cache_ttl_secs as i64) {
+                    continue; // 缓存未过期，跳过更新
+                }
+            }
+
+            // 获取信号量许可
+            let _permit = self.semaphore.acquire().await?;
+            
+            // 检查请求限制
+            if self.request_count.load(Ordering::Relaxed) >= config.max_requests_per_hour {
+                warn!("Rate limit reached, waiting for next hour");
+                time::sleep(Duration::from_secs(60)).await;
+                continue;
+            }
+
+            match self.fetch_price_with_retry(&symbol.symbol, config.max_retries).await {
                 Ok(price) => {
+                    self.request_count.fetch_add(1, Ordering::Relaxed);
                     if let Err(e) = self.save_price(&price).await {
                         error!("Failed to save price for {}: {}", symbol.symbol, e);
                     }
@@ -109,6 +166,37 @@ impl PriceFetcher {
         Ok(())
     }
 
+    async fn get_cached_price(&self, symbol: &str) -> Option<PriceCache> {
+        self.cache.read().await.get(symbol).cloned()
+    }
+
+    async fn set_cached_price(&self, symbol: String, price: PriceCache) {
+        self.cache.write().await.insert(symbol, price);
+    }
+
+    async fn fetch_price_with_retry(&self, symbol: &str, max_retries: u32) -> Result<StockPrice> {
+        let mut retries = 0;
+        let mut last_error = None;
+
+        while retries < max_retries {
+            match self.fetch_price(symbol).await {
+                Ok(price) => return Ok(price),
+                Err(e) => {
+                    let error_msg = e.to_string();
+                    last_error = Some(e);
+                    retries += 1;
+                    if retries < max_retries {
+                        let delay = Duration::from_secs(2u64.pow(retries)); // 指数退避
+                        warn!("Retry {} for {} after {}s: {}", retries, symbol, delay.as_secs(), error_msg);
+                        time::sleep(delay).await;
+                    }
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to fetch price after {} retries", max_retries)))
+    }
+
     async fn fetch_price(&self, symbol: &str) -> Result<StockPrice> {
         let url = format!(
             "https://query1.finance.yahoo.com/v8/finance/chart/{}",
@@ -120,7 +208,6 @@ impl PriceFetcher {
         let response = self.client
             .get(&url)
             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-            .timeout(Duration::from_secs(10))
             .send()
             .await?;
 
@@ -144,12 +231,21 @@ impl PriceFetcher {
 
         let volume = result.meta.regular_market_volume.unwrap_or(0);
 
-        Ok(StockPrice {
+        let stock_price = StockPrice {
             symbol: symbol.to_string(),
             price,
             volume,
             timestamp: Utc::now(),
-        })
+        };
+
+        // 更新缓存
+        self.set_cached_price(symbol.to_string(), PriceCache {
+            price,
+            volume,
+            timestamp: stock_price.timestamp,
+        }).await;
+
+        Ok(stock_price)
     }
 
     // 后备方案：使用模拟数据
@@ -256,5 +352,31 @@ impl PriceFetcher {
 
         info!("Alert {} has been triggered", alert_id);
         Ok(())
+    }
+
+    pub async fn start_price_updater(self: Arc<Self>, config: Arc<PriceFetcherConfig>) {
+        tokio::spawn(async move {
+            loop {
+                if let Err(e) = self.update_prices(&config).await {
+                    error!("Error updating prices: {}", e);
+                }
+                time::sleep(self.update_interval).await;
+            }
+        });
+    }
+}
+
+// 为 PriceService 实现 Clone
+impl Clone for PriceService {
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            db: self.db.clone(),
+            update_interval: self.update_interval,
+            cache: self.cache.clone(),
+            semaphore: self.semaphore.clone(),
+            request_count: AtomicU64::new(self.request_count.load(Ordering::Relaxed)),
+            last_reset: AtomicU64::new(self.last_reset.load(Ordering::Relaxed)),
+        }
     }
 } 

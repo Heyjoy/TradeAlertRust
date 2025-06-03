@@ -43,18 +43,10 @@ async fn main() -> anyhow::Result<()> {
     // Create application state
     let state = AppState { db: db.clone() };
 
-    // Initialize price fetcher
-    let fetcher = fetcher::PriceFetcher::new(
-        db.pool().clone(),
-        Duration::from_secs(config.price_fetcher.update_interval_secs),
-    );
-
-    // Start price fetcher in a separate task
-    tokio::spawn(async move {
-        if let Err(e) = fetcher.start().await {
-            tracing::error!("Price fetcher service failed: {}", e);
-        }
-    });
+    // Initialize price service with Arc
+    let price_service = Arc::new(fetcher::PriceService::new(db.pool().clone(), &config.price_fetcher));
+    let price_config = Arc::new(config.price_fetcher.clone());
+    price_service.start_price_updater(price_config).await;
 
     // Build our application with a route
     let app = Router::new()

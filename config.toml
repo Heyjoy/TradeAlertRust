@@ -13,4 +13,17 @@ level = "info"
 default_schedule = "*/5 * * * *"
 
 [price_fetcher]
-update_interval_secs = 1
+# 价格更新间隔（秒）
+update_interval_secs = 30
+# 缓存过期时间（秒）
+cache_ttl_secs = 30
+# 最大重试次数
+max_retries = 3
+# 并发请求限制
+max_concurrent_requests = 5
+# 每小时最大请求数
+max_requests_per_hour = 2000
+# 请求超时时间（秒）
+request_timeout_secs = 10
+# 连接池空闲超时时间（秒）
+pool_idle_timeout_secs = 30
