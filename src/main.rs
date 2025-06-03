@@ -3,6 +3,7 @@ mod db;
 mod templates;
 mod models;
 mod fetcher;
+mod email;
 
 use axum::{
     routing::get,
@@ -24,6 +25,7 @@ use askama::Template;
 #[derive(Clone)]
 struct AppState {
     db: Arc<db::Database>,
+    email_notifier: Arc<email::EmailNotifier>,
 }
 
 #[tokio::main]
@@ -40,8 +42,11 @@ async fn main() -> anyhow::Result<()> {
     // Initialize database
     let db = Arc::new(db::Database::new(&config.database.url).await?);
 
+    // Initialize email notifier
+    let email_notifier = Arc::new(email::EmailNotifier::new(config.email.clone())?);
+
     // Create application state
-    let state = AppState { db: db.clone() };
+    let state = AppState { db: db.clone(), email_notifier };
 
     // Initialize price service with Arc
     let price_service = Arc::new(fetcher::PriceService::new(db.pool().clone(), &config.price_fetcher));
@@ -57,6 +62,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/alerts/:id", get(get_alert).delete(delete_alert).put(update_alert))
         .route("/api/prices/:symbol", get(get_price_history))
         .route("/api/prices/:symbol/latest", get(get_latest_price))
+        .route("/api/test-email", get(send_test_email))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -275,4 +281,25 @@ async fn get_latest_price(
             (StatusCode::INTERNAL_SERVER_ERROR, "Failed to get latest price").into_response()
         }
     }
-} 
+}
+
+async fn send_test_email(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    match state.email_notifier.send_test_email().await {
+        Ok(_) => {
+            tracing::info!("测试邮件发送成功");
+            Json(serde_json::json!({
+                "success": true,
+                "message": "测试邮件发送成功，请检查您的邮箱"
+            })).into_response()
+        }
+        Err(e) => {
+            tracing::error!("测试邮件发送失败: {}", e);
+            Json(serde_json::json!({
+                "success": false,
+                "message": format!("测试邮件发送失败: {}", e)
+            })).into_response()
+        }
+    }
+}

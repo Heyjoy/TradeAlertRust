@@ -27,3 +27,16 @@ max_requests_per_hour = 2000
 request_timeout_secs = 10
 # 连接池空闲超时时间（秒）
 pool_idle_timeout_secs = 30
+
+[email]
+# SMTP服务器配置
+smtp_server = "smtp.gmail.com"
+smtp_port = 587
+smtp_username = "your_email@gmail.com"
+smtp_password = "your_app_password"
+from_email = "your_email@gmail.com"
+from_name = "交易预警系统"
+# 接收预警的邮箱
+to_email = "your_email@gmail.com"
+# 是否启用邮件通知
+enabled = true

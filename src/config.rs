@@ -33,6 +33,18 @@ pub struct PriceFetcherConfig {
     pub pool_idle_timeout_secs: u64,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct EmailConfig {
+    pub smtp_server: String,
+    pub smtp_port: u16,
+    pub smtp_username: String,
+    pub smtp_password: String,
+    pub from_email: String,
+    pub from_name: String,
+    pub to_email: String,
+    pub enabled: bool,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
@@ -40,6 +52,7 @@ pub struct Config {
     pub logging: LoggingConfig,
     pub scheduler: SchedulerConfig,
     pub price_fetcher: PriceFetcherConfig,
+    pub email: EmailConfig,
 }
 
 impl Config {

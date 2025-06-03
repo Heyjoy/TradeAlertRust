@@ -40,5 +40,8 @@ dotenvy = "0.15"
 rand = "0.8"
 toml = "0.8"
 
+# Email
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "builder"] }
+
 [dev-dependencies]
 tokio-test = "0.4" 
