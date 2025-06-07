@@ -7,6 +7,10 @@
 # Ignore SQLite database file (trade_alert.db)
 /trade_alert.db
 
+# Ignore configuration files with sensitive data
+/config.toml
+/config.local.toml
+
 # Ignore Cargo.lock (if you are building a library, otherwise you may choose to commit it)
 # /Cargo.lock
 

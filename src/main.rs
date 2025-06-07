@@ -30,6 +30,9 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // 加载.env文件（如果存在）- 必须在配置加载之前
+    dotenvy::dotenv().ok();
+    
     // Load configuration
     let config = config::Config::load()?;
 

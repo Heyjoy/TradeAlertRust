@@ -58,11 +58,65 @@ pub struct Config {
 impl Config {
     pub fn load() -> anyhow::Result<Self> {
         let config = config::Config::builder()
-            .add_source(config::File::with_name("config"))
-            .add_source(config::Environment::with_prefix("TRADE_ALERT"))
+            // 1. 首先加载默认配置模板
+            .add_source(config::File::with_name("config.toml.example").required(false))
+            // 2. 然后加载本地配置（如果存在）
+            .add_source(config::File::with_name("config.local").required(false))
+            // 3. 最后加载主配置文件（如果存在）
+            .add_source(config::File::with_name("config").required(false))
+            // 4. 环境变量具有最高优先级
+            .add_source(config::Environment::with_prefix("TRADE_ALERT").separator("_"))
             .build()?;
 
-        Ok(config.try_deserialize()?)
+        let mut result: Config = config.try_deserialize()?;
+        
+        // 处理环境变量占位符
+        result.resolve_placeholders()?;
+        
+        Ok(result)
+    }
+
+    fn resolve_placeholders(&mut self) -> anyhow::Result<()> {
+        use std::env;
+        
+        // 解析邮件配置中的环境变量占位符
+        if self.email.smtp_username.starts_with("${") && self.email.smtp_username.ends_with("}") {
+            let var_name = &self.email.smtp_username[2..self.email.smtp_username.len()-1];
+            self.email.smtp_username = env::var(var_name)
+                .unwrap_or_else(|_| {
+                    tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
+                    "your_email@gmail.com".to_string()
+                });
+        }
+        
+        if self.email.smtp_password.starts_with("${") && self.email.smtp_password.ends_with("}") {
+            let var_name = &self.email.smtp_password[2..self.email.smtp_password.len()-1];
+            self.email.smtp_password = env::var(var_name)
+                .unwrap_or_else(|_| {
+                    tracing::warn!("环境变量 {} 未设置，邮件功能可能无法正常工作", var_name);
+                    "your_app_password".to_string()
+                });
+        }
+        
+        if self.email.from_email.starts_with("${") && self.email.from_email.ends_with("}") {
+            let var_name = &self.email.from_email[2..self.email.from_email.len()-1];
+            self.email.from_email = env::var(var_name)
+                .unwrap_or_else(|_| {
+                    tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
+                    "your_email@gmail.com".to_string()
+                });
+        }
+        
+        if self.email.to_email.starts_with("${") && self.email.to_email.ends_with("}") {
+            let var_name = &self.email.to_email[2..self.email.to_email.len()-1];
+            self.email.to_email = env::var(var_name)
+                .unwrap_or_else(|_| {
+                    tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
+                    "your_email@gmail.com".to_string()
+                });
+        }
+        
+        Ok(())
     }
 
     pub fn server_addr(&self) -> SocketAddr {

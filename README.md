@@ -46,23 +46,39 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ### 2. 配置邮件服务
 
-编辑 `config.toml` 文件：
+**🔒 重要安全提醒：** 为保护隐私，请勿将邮箱密码等敏感信息上传到GitHub！
 
-```toml
-[email]
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-smtp_username = "your_email@gmail.com"
-smtp_password = "your_app_password"  # Gmail应用专用密码
-from_email = "your_email@gmail.com"
-from_name = "交易预警系统"
-to_email = "your_email@gmail.com"
-enabled = true
+#### 方法一：环境变量配置（推荐）
+
+创建 `.env` 文件：
+
+```bash
+# .env 文件 (已被.gitignore排除)
+TRADE_ALERT_EMAIL_SMTP_USERNAME=your_email@gmail.com
+TRADE_ALERT_EMAIL_SMTP_PASSWORD=your_app_password
+TRADE_ALERT_EMAIL_FROM_EMAIL=your_email@gmail.com
+TRADE_ALERT_EMAIL_TO_EMAIL=your_email@gmail.com
+```
+
+#### 方法二：本地配置文件
+
+```bash
+# 复制配置模板
+cp config.toml.example config.local.toml
+# 编辑 config.local.toml 填入真实配置
+```
+
+#### 方法三：系统环境变量
+
+```bash
+export TRADE_ALERT_EMAIL_SMTP_USERNAME="your_email@gmail.com"
+export TRADE_ALERT_EMAIL_SMTP_PASSWORD="your_app_password"
 ```
 
 **重要**: 
 - Gmail用户需要启用两步验证并生成应用专用密码
-- 详细配置说明请查看 `docs/email-setup.md`
+- 详细配置说明请查看 `docs/security-config.md`
+- 邮件设置指南请查看 `docs/email-setup.md`
 
 ### 3. 启动服务
 
