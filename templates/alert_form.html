@@ -64,6 +64,44 @@
         color: #666;
     }
 
+    /* 股票验证状态样式 */
+    .symbol-validation {
+        padding: 0.75rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        border-left: 4px solid;
+    }
+
+    .symbol-validation.loading {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+    }
+
+    .symbol-validation.success {
+        background-color: #d1e7dd;
+        border-color: #28a745;
+        color: #155724;
+    }
+
+    .symbol-validation.error {
+        background-color: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+    }
+
+    .current-price-display {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #28a745;
+    }
+
+    .price-timestamp {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+
     @media (max-width: 768px) {
         .form-container {
             padding: 1rem;
@@ -100,8 +138,13 @@
                    value="{% if alert.is_some() %}{{ alert.as_ref().unwrap().symbol }}{% endif %}"
                    required 
                    pattern="[A-Za-z0-9.]+"
-                   title="请输入有效的股票代码（例如：AAPL、GOOGL）">
-            <div class="form-text">输入股票代码，例如：AAPL、GOOGL</div>
+                   title="请输入有效的股票代码（例如：AAPL、GOOGL）"
+                   placeholder="例如：AAPL、PDD、GOOGL">
+            
+            <!-- 实时验证状态显示 -->
+            <div id="symbol-validation" class="mt-2"></div>
+            
+            <div class="form-text">输入股票代码后会自动验证并显示当前价格</div>
         </div>
 
         <div class="form-group">
@@ -158,9 +201,109 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    let validationTimeout;
+    
     $('#symbol').on('input', function() {
         this.value = this.value.toUpperCase();
+        
+        // 清除之前的定时器
+        if (validationTimeout) {
+            clearTimeout(validationTimeout);
+        }
+        
+        const symbol = $(this).val().trim();
+        
+        // 如果输入为空，清除验证状态
+        if (symbol.length === 0) {
+            $('#symbol-validation').empty();
+            return;
+        }
+        
+        // 防抖：用户停止输入500ms后才验证
+        validationTimeout = setTimeout(() => {
+            validateStockSymbol(symbol);
+        }, 500);
     });
+
+    // 股票代码验证函数
+    async function validateStockSymbol(symbol) {
+        const $validation = $('#symbol-validation');
+        
+        // 显示加载状态
+        $validation.html(`
+            <div class="symbol-validation loading">
+                <i class="fas fa-spinner fa-spin me-2"></i>
+                正在验证股票代码 "${symbol}"...
+            </div>
+        `);
+        
+        try {
+            // 调用价格API验证
+            const response = await fetch(`/api/prices/${symbol}/latest`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('zh-CN', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                // 显示成功状态
+                $validation.html(`
+                    <div class="symbol-validation success">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>${symbol}</strong> - 股票代码有效
+                            </div>
+                            <div class="current-price-display">
+                                $${data.price.toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="price-timestamp">
+                            当前价格，更新于 ${timeStr}
+                        </div>
+                    </div>
+                `);
+                
+                // 启用提交按钮
+                $('#alertForm button[type="submit"]').prop('disabled', false);
+                
+            } else {
+                // 显示错误状态
+                $validation.html(`
+                    <div class="symbol-validation error">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        股票代码 "<strong>${symbol}</strong>" 无效或暂时无法获取价格
+                        <div class="mt-1">
+                            <small>请检查代码是否正确，常见代码：AAPL (苹果)、PDD (拼多多)、GOOGL (谷歌)</small>
+                        </div>
+                    </div>
+                `);
+                
+                // 禁用提交按钮
+                $('#alertForm button[type="submit"]').prop('disabled', true);
+            }
+        } catch (error) {
+            console.error('验证股票代码时出错:', error);
+            
+            // 显示网络错误
+            $validation.html(`
+                <div class="symbol-validation error">
+                    <i class="fas fa-wifi me-2"></i>
+                    网络连接异常，请检查网络后重试
+                    <div class="mt-1">
+                        <small>如果问题持续存在，请稍后再试</small>
+                    </div>
+                </div>
+            `);
+            
+            // 允许提交（网络问题不应该阻止用户）
+            $('#alertForm button[type="submit"]').prop('disabled', false);
+        }
+    }
 
     $('#alertForm').on('submit', function(e) {
         e.preventDefault();
