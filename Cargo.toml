@@ -3,6 +3,10 @@ name = "trade_alert_rust"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "trade_alert_rust"
+path = "src/lib.rs"
+
 [dependencies]
 # Web framework
 axum = { version = "0.7", features = ["macros"] }

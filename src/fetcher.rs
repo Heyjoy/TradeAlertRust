@@ -13,6 +13,7 @@ use tokio::sync::RwLock;
 use tokio::sync::Semaphore;
 use std::sync::atomic::{AtomicU64, Ordering};
 use crate::config::PriceFetcherConfig;
+use crate::email::EmailNotifier;
 
 #[derive(Debug, Deserialize)]
 struct YahooQuoteResponse {
@@ -70,10 +71,11 @@ pub struct PriceService {
     semaphore: Arc<Semaphore>,
     request_count: AtomicU64,
     last_reset: AtomicU64,
+    email_notifier: Arc<EmailNotifier>,
 }
 
 impl PriceService {
-    pub fn new(db: SqlitePool, config: &PriceFetcherConfig) -> Self {
+    pub fn new(db: SqlitePool, config: &PriceFetcherConfig, email_notifier: Arc<EmailNotifier>) -> Self {
         Self {
             client: Client::builder()
                 .timeout(Duration::from_secs(config.request_timeout_secs))
@@ -86,6 +88,7 @@ impl PriceService {
             semaphore: Arc::new(Semaphore::new(config.max_concurrent_requests)),
             request_count: AtomicU64::new(0),
             last_reset: AtomicU64::new(Utc::now().timestamp() as u64),
+            email_notifier,
         }
     }
 
@@ -323,17 +326,57 @@ impl PriceService {
 
             if triggered {
                 if let Some(alert_id) = alert.id {
+                    // 标记预警为已触发
                     if let Err(e) = self.mark_alert_triggered(alert_id).await {
                         error!("Failed to mark alert {:?} as triggered: {}", alert_id, e);
-                    } else {
-                        info!("🔔 Alert {} triggered! {} is now ${:.2} (target: {} ${:.2})", 
-                              alert_id, symbol, current_price, alert.condition, alert.price);
+                        continue;
+                    }
+
+                    info!("🔔 Alert {} triggered! {} is now ${:.2} (target: {} ${:.2})", 
+                          alert_id, symbol, current_price, alert.condition, alert.price);
+
+                    // 获取完整的预警信息并发送邮件通知
+                    match self.get_alert_by_id(alert_id).await {
+                        Ok(Some(full_alert)) => {
+                            info!("Sending email notification for alert {}", alert_id);
+                            if let Err(e) = self.email_notifier
+                                .send_alert_notification(&full_alert, current_price).await {
+                                error!("Failed to send email notification for alert {}: {}", alert_id, e);
+                            } else {
+                                info!("✅ Email notification sent successfully for alert {}", alert_id);
+                            }
+                        }
+                        Ok(None) => {
+                            error!("Alert {} not found after triggering", alert_id);
+                        }
+                        Err(e) => {
+                            error!("Failed to fetch alert {} for email notification: {}", alert_id, e);
+                        }
                     }
                 }
             }
         }
 
         Ok(())
+    }
+
+    // 添加获取完整Alert信息的方法
+    async fn get_alert_by_id(&self, alert_id: i64) -> Result<Option<crate::models::Alert>> {
+        let alert = sqlx::query_as!(
+            crate::models::Alert,
+            r#"
+            SELECT id, symbol, condition as "condition: crate::models::AlertCondition", 
+                   price, status as "status: crate::models::AlertStatus", 
+                   created_at, updated_at, triggered_at
+            FROM alerts
+            WHERE id = ?
+            "#,
+            alert_id
+        )
+        .fetch_optional(&self.db)
+        .await?;
+
+        Ok(alert)
     }
 
     async fn mark_alert_triggered(&self, alert_id: i64) -> Result<()> {
@@ -377,6 +420,7 @@ impl Clone for PriceService {
             semaphore: self.semaphore.clone(),
             request_count: AtomicU64::new(self.request_count.load(Ordering::Relaxed)),
             last_reset: AtomicU64::new(self.last_reset.load(Ordering::Relaxed)),
+            email_notifier: self.email_notifier.clone(),
         }
     }
 } 

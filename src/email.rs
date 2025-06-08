@@ -24,10 +24,29 @@ impl EmailNotifier {
             config.smtp_password.clone(),
         );
 
-        let smtp = AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_server)?
-            .port(config.smtp_port)
-            .credentials(credentials)
-            .build();
+        // 使用更稳定的SMTP配置
+        let smtp = if config.smtp_port == 587 {
+            // 对于587端口，使用STARTTLS
+            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.smtp_server)?
+                .port(config.smtp_port)
+                .credentials(credentials)
+                .timeout(Some(std::time::Duration::from_secs(30)))
+                .build()
+        } else if config.smtp_port == 465 {
+            // 对于465端口，使用TLS
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_server)?
+                .port(config.smtp_port)
+                .credentials(credentials)
+                .timeout(Some(std::time::Duration::from_secs(30)))
+                .build()
+        } else {
+            // 其他端口，尝试relay
+            AsyncSmtpTransport::<Tokio1Executor>::relay(&config.smtp_server)?
+                .port(config.smtp_port)
+                .credentials(credentials)
+                .timeout(Some(std::time::Duration::from_secs(30)))
+                .build()
+        };
 
         Ok(Self { config, smtp })
     }
@@ -92,11 +111,12 @@ impl EmailNotifier {
         };
 
         let price_change = if alert.condition == crate::models::AlertCondition::Above {
-            format!("价格从 ${:.4} 上涨至 ${:.4}", alert.price, current_price)
+            format!("价格从 ${:.2} 上涨至 ${:.2}", alert.price, current_price)
         } else {
-            format!("价格从 ${:.4} 下跌至 ${:.4}", alert.price, current_price)
+            format!("价格从 ${:.2} 下跌至 ${:.2}", alert.price, current_price)
         };
 
+        // 创建更简单的HTML模板
         let body = format!(
             r#"
 <!DOCTYPE html>
@@ -106,57 +126,43 @@ impl EmailNotifier {
     <style>
         body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
         .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background-color: #f8f9fa; padding: 20px; border-radius: 5px; text-align: center; }}
-        .alert-box {{ background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-        .details {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }}
-        .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; }}
+        .header {{ background-color: #ff6b6b; color: white; padding: 20px; border-radius: 5px; text-align: center; }}
+        .content {{ background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }}
         .price {{ font-size: 24px; font-weight: bold; color: #e74c3c; }}
-        .symbol {{ font-size: 20px; font-weight: bold; color: #2c3e50; }}
+        .footer {{ text-align: center; color: #666; margin-top: 20px; }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🚨 交易预警触发</h1>
-            <div class="symbol">{}</div>
+            <h2>{symbol}</h2>
         </div>
         
-        <div class="alert-box">
-            <h2>预警详情</h2>
-            <p><strong>预警类型:</strong> {}</p>
-            <p><strong>触发价格:</strong> <span class="price">${:.4}</span></p>
-            <p><strong>设定价格:</strong> ${:.4}</p>
-            <p><strong>触发时间:</strong> {}</p>
-        </div>
-        
-        <div class="details">
-            <h3>价格变化</h3>
-            <p>{}</p>
-            
-            <h3>预警信息</h3>
-            <p><strong>预警ID:</strong> {}</p>
-            <p><strong>创建时间:</strong> {}</p>
-            <p><strong>状态:</strong> {}</p>
+        <div class="content">
+            <h3>预警详情</h3>
+            <p><strong>预警类型:</strong> {alert_type}</p>
+            <p><strong>当前价格:</strong> <span class="price">${current_price:.2}</span></p>
+            <p><strong>设定价格:</strong> ${target_price:.2}</p>
+            <p><strong>价格变化:</strong> {price_change}</p>
+            <p><strong>预警ID:</strong> {alert_id}</p>
+            <p><strong>触发时间:</strong> {trigger_time}</p>
         </div>
         
         <div class="footer">
             <p>此邮件由交易预警系统自动发送</p>
-            <p>发送时间: {}</p>
         </div>
     </div>
 </body>
 </html>
             "#,
-            alert.symbol,
-            alert_type,
-            current_price,
-            alert.price,
-            now.format("%Y-%m-%d %H:%M:%S"),
-            price_change,
-            alert.id,
-            alert.created_at.format("%Y-%m-%d %H:%M:%S"),
-            alert.status,
-            now.format("%Y-%m-%d %H:%M:%S")
+            symbol = alert.symbol,
+            alert_type = alert_type,
+            current_price = current_price,
+            target_price = alert.price,
+            price_change = price_change,
+            alert_id = alert.id,
+            trigger_time = now.format("%Y-%m-%d %H:%M:%S")
         );
 
         Ok(body)

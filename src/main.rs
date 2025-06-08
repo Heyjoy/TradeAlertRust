@@ -48,13 +48,13 @@ async fn main() -> anyhow::Result<()> {
     // Initialize email notifier
     let email_notifier = Arc::new(email::EmailNotifier::new(config.email.clone())?);
 
-    // Create application state
-    let state = AppState { db: db.clone(), email_notifier };
-
     // Initialize price service with Arc
-    let price_service = Arc::new(fetcher::PriceService::new(db.pool().clone(), &config.price_fetcher));
+    let price_service = Arc::new(fetcher::PriceService::new(db.pool().clone(), &config.price_fetcher, email_notifier.clone()));
     let price_config = Arc::new(config.price_fetcher.clone());
     price_service.start_price_updater(price_config).await;
+
+    // Create application state
+    let state = AppState { db: db.clone(), email_notifier };
 
     // Build our application with a route
     let app = Router::new()
