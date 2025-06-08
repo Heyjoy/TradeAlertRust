@@ -13,6 +13,7 @@ pub struct Alert {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub triggered_at: Option<NaiveDateTime>,
+    pub notification_email: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, PartialEq)]
@@ -65,6 +66,7 @@ pub struct CreateAlertRequest {
     pub symbol: String,
     pub condition: AlertCondition,
     pub price: f64,
+    pub notification_email: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -77,6 +79,7 @@ pub struct AlertResponse {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub triggered_at: Option<NaiveDateTime>,
+    pub notification_email: Option<String>,
 }
 
 // 用于模板渲染的 Alert 结构体
@@ -90,6 +93,7 @@ pub struct AlertForTemplate {
     pub created_at: String,
     pub updated_at: String,
     pub triggered_at: Option<String>,
+    pub notification_email: Option<String>,
 }
 
 impl From<Alert> for AlertForTemplate {
@@ -103,6 +107,7 @@ impl From<Alert> for AlertForTemplate {
             created_at: alert.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
             updated_at: alert.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
             triggered_at: alert.triggered_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
+            notification_email: alert.notification_email,
         }
     }
 }
@@ -118,6 +123,7 @@ impl From<Alert> for AlertResponse {
             created_at: alert.created_at,
             updated_at: alert.updated_at,
             triggered_at: alert.triggered_at,
+            notification_email: alert.notification_email,
         }
     }
 }

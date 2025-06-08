@@ -17,17 +17,19 @@ impl Database {
         let condition_str = request.condition.to_string().to_lowercase();
         let condition = condition_str.as_str();
         let price = request.price;
+        let notification_email = request.notification_email.as_deref();
         let alert = sqlx::query_as!(
             Alert,
             r#"
-            INSERT INTO alerts (symbol, condition, price, status)
-            VALUES (?, ?, ?, 'active')
+            INSERT INTO alerts (symbol, condition, price, status, notification_email)
+            VALUES (?, ?, ?, 'active', ?)
             RETURNING id, symbol, condition as "condition: _", price, 
-                     status as "status: _", created_at, updated_at, triggered_at
+                     status as "status: _", created_at, updated_at, triggered_at, notification_email
             "#,
             symbol,
             condition,
             price,
+            notification_email,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -40,7 +42,7 @@ impl Database {
             Alert,
             r#"
             SELECT id, symbol, condition as "condition: _", price, 
-                   status as "status: _", created_at, updated_at, triggered_at
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email
             FROM alerts
             ORDER BY created_at DESC
             "#
@@ -56,7 +58,7 @@ impl Database {
             Alert,
             r#"
             SELECT id, symbol, condition as "condition: _", price, 
-                   status as "status: _", created_at, updated_at, triggered_at
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email
             FROM alerts
             WHERE id = ?
             "#,
@@ -120,15 +122,17 @@ impl Database {
         let condition_str = request.condition.to_string().to_lowercase();
         let condition = condition_str.as_str();
         let price = request.price;
+        let notification_email = request.notification_email.as_deref();
         let result = sqlx::query!(
             r#"
             UPDATE alerts
-            SET symbol = ?, condition = ?, price = ?, updated_at = CURRENT_TIMESTAMP
+            SET symbol = ?, condition = ?, price = ?, notification_email = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             "#,
             symbol,
             condition,
             price,
+            notification_email,
             id
         )
         .execute(&self.pool)

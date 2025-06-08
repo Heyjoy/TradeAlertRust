@@ -128,6 +128,17 @@
             <div class="form-text">输入目标价格，精确到小数点后两位</div>
         </div>
 
+        <div class="form-group">
+            <label for="notification_email" class="form-label">📧 通知邮箱</label>
+            <input type="email" 
+                   class="form-control" 
+                   id="notification_email" 
+                   name="notification_email" 
+                   value="{% if alert.is_some() %}{% if alert.as_ref().unwrap().notification_email.is_some() %}{{ alert.as_ref().unwrap().notification_email.as_ref().unwrap() }}{% endif %}{% endif %}"
+                   placeholder="your-email@example.com">
+            <div class="form-text">预警触发时将发送邮件到此地址（留空则使用系统默认邮箱）</div>
+        </div>
+
         <div class="form-actions">
             <a href="/" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i>返回
@@ -157,7 +168,8 @@ $(document).ready(function() {
         const formData = {
             symbol: $('#symbol').val(),
             condition: $('#condition').val(),
-            price: parseFloat($('#price').val())
+            price: parseFloat($('#price').val()),
+            notification_email: $('#notification_email').val() || null
         };
 
         const method = $('input[name="_method"]').val() || 'POST';

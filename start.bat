@@ -1,5 +1,5 @@
 @echo off
 echo 🚀 启动交易预警系统...
-set DATABASE_URL=sqlite:trade_alert.db
+echo.
 cargo run --bin trade_alert_rust
 pause 

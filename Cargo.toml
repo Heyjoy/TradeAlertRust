@@ -2,6 +2,7 @@
 name = "trade_alert_rust"
 version = "0.1.0"
 edition = "2021"
+default-run = "trade_alert_rust"
 
 [lib]
 name = "trade_alert_rust"

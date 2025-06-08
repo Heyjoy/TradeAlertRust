@@ -60,7 +60,12 @@ impl EmailNotifier {
         let subject = format!("交易预警触发 - {}", alert.symbol);
         let body = self.create_alert_email_body(alert, current_price)?;
 
-        self.send_email(&subject, &body).await
+        // 优先使用预警设置的邮箱，否则使用默认邮箱
+        let target_email = alert.notification_email
+            .as_ref()
+            .unwrap_or(&self.config.to_email);
+
+        self.send_email_to(&subject, &body, target_email).await
     }
 
     pub async fn send_test_email(&self) -> anyhow::Result<()> {
@@ -71,15 +76,15 @@ impl EmailNotifier {
         let subject = "交易预警系统 - 测试邮件";
         let body = self.create_test_email_body();
 
-        self.send_email(&subject, &body).await
+        self.send_email_to(&subject, &body, &self.config.to_email).await
     }
 
-    async fn send_email(&self, subject: &str, body: &str) -> anyhow::Result<()> {
+    async fn send_email_to(&self, subject: &str, body: &str, target_email: &str) -> anyhow::Result<()> {
         let from_mailbox: Mailbox = format!("{} <{}>", self.config.from_name, self.config.from_email)
             .parse()
             .map_err(|e| anyhow::anyhow!("无效的发件人邮箱格式: {}", e))?;
 
-        let to_mailbox: Mailbox = self.config.to_email
+        let to_mailbox: Mailbox = target_email
             .parse()
             .map_err(|e| anyhow::anyhow!("无效的收件人邮箱格式: {}", e))?;
 
@@ -93,11 +98,11 @@ impl EmailNotifier {
 
         match self.smtp.send(email).await {
             Ok(_) => {
-                info!("邮件发送成功: {}", subject);
+                info!("邮件发送成功到 {}: {}", target_email, subject);
                 Ok(())
             }
             Err(e) => {
-                error!("邮件发送失败: {}", e);
+                error!("邮件发送失败到 {}: {}", target_email, e);
                 Err(anyhow::anyhow!("邮件发送失败: {}", e))
             }
         }

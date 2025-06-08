@@ -367,7 +367,7 @@ impl PriceService {
             r#"
             SELECT id, symbol, condition as "condition: crate::models::AlertCondition", 
                    price, status as "status: crate::models::AlertStatus", 
-                   created_at, updated_at, triggered_at
+                   created_at, updated_at, triggered_at, notification_email
             FROM alerts
             WHERE id = ?
             "#,
