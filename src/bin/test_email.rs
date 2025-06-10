@@ -4,23 +4,37 @@ use trade_alert_rust::{config::Config, email::EmailNotifier};
 async fn main() -> anyhow::Result<()> {
     // 初始化日志
     tracing_subscriber::fmt::init();
-    
+
     // 加载配置
     dotenvy::dotenv().ok();
     let config = Config::load()?;
-    
+
     println!("邮件配置:");
     println!("SMTP服务器: {}", config.email.smtp_server);
     println!("SMTP端口: {}", config.email.smtp_port);
-    println!("用户名: {}***", &config.email.smtp_username.chars().take(3).collect::<String>());
-    println!("发件人: {}***", &config.email.from_email.chars().take(3).collect::<String>());
-    println!("收件人: {}***", &config.email.to_email.chars().take(3).collect::<String>());
+    println!(
+        "用户名: {}***",
+        &config
+            .email
+            .smtp_username
+            .chars()
+            .take(3)
+            .collect::<String>()
+    );
+    println!(
+        "发件人: {}***",
+        &config.email.from_email.chars().take(3).collect::<String>()
+    );
+    println!(
+        "收件人: {}***",
+        &config.email.to_email.chars().take(3).collect::<String>()
+    );
     println!("是否启用: {}", config.email.enabled);
-    
+
     // 创建邮件通知器
     println!("\n创建邮件通知器...");
     let email_notifier = EmailNotifier::new(config.email)?;
-    
+
     // 发送测试邮件
     println!("发送测试邮件...");
     match email_notifier.send_test_email().await {
@@ -30,6 +44,6 @@ async fn main() -> anyhow::Result<()> {
             println!("详细错误: {:?}", e);
         }
     }
-    
+
     Ok(())
-} 
+}

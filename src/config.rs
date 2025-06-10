@@ -69,19 +69,19 @@ impl Config {
             .build()?;
 
         let mut result: Config = config.try_deserialize()?;
-        
+
         // Railway/Production 环境变量处理
         result.handle_production_env()?;
-        
+
         // 处理环境变量占位符
         result.resolve_placeholders()?;
-        
+
         Ok(result)
     }
 
     fn handle_production_env(&mut self) -> anyhow::Result<()> {
         use std::env;
-        
+
         // Railway的PORT环境变量支持
         if let Ok(port) = env::var("PORT") {
             if let Ok(port_num) = port.parse::<u16>() {
@@ -91,7 +91,7 @@ impl Config {
                 self.server.host = "0.0.0.0".to_string();
             }
         }
-        
+
         // 如果是生产环境，使用内存数据库作为fallback
         if env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("PORT").is_ok() {
             // 保持SQLite，但确保文件路径正确
@@ -99,50 +99,46 @@ impl Config {
                 self.database.url = "sqlite:trade_alert.db".to_string();
             }
         }
-        
+
         Ok(())
     }
 
     fn resolve_placeholders(&mut self) -> anyhow::Result<()> {
         use std::env;
-        
+
         // 解析邮件配置中的环境变量占位符
         if self.email.smtp_username.starts_with("${") && self.email.smtp_username.ends_with("}") {
-            let var_name = &self.email.smtp_username[2..self.email.smtp_username.len()-1];
-            self.email.smtp_username = env::var(var_name)
-                .unwrap_or_else(|_| {
-                    tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
-                    "your_email@gmail.com".to_string()
-                });
+            let var_name = &self.email.smtp_username[2..self.email.smtp_username.len() - 1];
+            self.email.smtp_username = env::var(var_name).unwrap_or_else(|_| {
+                tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
+                "your_email@gmail.com".to_string()
+            });
         }
-        
+
         if self.email.smtp_password.starts_with("${") && self.email.smtp_password.ends_with("}") {
-            let var_name = &self.email.smtp_password[2..self.email.smtp_password.len()-1];
-            self.email.smtp_password = env::var(var_name)
-                .unwrap_or_else(|_| {
-                    tracing::warn!("环境变量 {} 未设置，邮件功能可能无法正常工作", var_name);
-                    "your_app_password".to_string()
-                });
+            let var_name = &self.email.smtp_password[2..self.email.smtp_password.len() - 1];
+            self.email.smtp_password = env::var(var_name).unwrap_or_else(|_| {
+                tracing::warn!("环境变量 {} 未设置，邮件功能可能无法正常工作", var_name);
+                "your_app_password".to_string()
+            });
         }
-        
+
         if self.email.from_email.starts_with("${") && self.email.from_email.ends_with("}") {
-            let var_name = &self.email.from_email[2..self.email.from_email.len()-1];
-            self.email.from_email = env::var(var_name)
-                .unwrap_or_else(|_| {
-                    tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
-                    "your_email@gmail.com".to_string()
-                });
+            let var_name = &self.email.from_email[2..self.email.from_email.len() - 1];
+            self.email.from_email = env::var(var_name).unwrap_or_else(|_| {
+                tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
+                "your_email@gmail.com".to_string()
+            });
         }
-        
+
         if self.email.to_email.starts_with("${") && self.email.to_email.ends_with("}") {
-            let var_name = &self.email.to_email[2..self.email.to_email.len()-1];
-            self.email.to_email = env::var(var_name)
-                .unwrap_or_else(|_| {
-                    tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
-                    "your_email@gmail.com".to_string()
-                });
+            let var_name = &self.email.to_email[2..self.email.to_email.len() - 1];
+            self.email.to_email = env::var(var_name).unwrap_or_else(|_| {
+                tracing::warn!("环境变量 {} 未设置，使用默认值", var_name);
+                "your_email@gmail.com".to_string()
+            });
         }
-        
+
         Ok(())
     }
 
@@ -151,4 +147,4 @@ impl Config {
             .parse()
             .expect("Invalid server address")
     }
-} 
+}

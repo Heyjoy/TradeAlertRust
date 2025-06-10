@@ -1,14 +1,15 @@
 use anyhow::Result;
 use sqlx::sqlite::SqlitePool;
 use std::path::Path;
-use tracing::{info, error};
+use tracing::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     // 读取数据库 URL
-    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:trade_alert.db".to_string());
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:trade_alert.db".to_string());
     let pool = SqlitePool::connect(&database_url).await?;
 
     // 读取 migrations 目录下所有 .sql 文件
@@ -37,4 +38,4 @@ async fn main() -> Result<()> {
     }
     info!("Database migrations completed successfully");
     Ok(())
-} 
+}

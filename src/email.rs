@@ -1,12 +1,12 @@
+use crate::config::EmailConfig;
+use crate::models::Alert;
+use chrono::Local;
 use lettre::{
     message::{header::ContentType, Mailbox},
     transport::smtp::authentication::Credentials,
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
 use tracing::{error, info, warn};
-use crate::config::EmailConfig;
-use crate::models::Alert;
-use chrono::Local;
 
 pub struct EmailNotifier {
     config: EmailConfig,
@@ -19,10 +19,8 @@ impl EmailNotifier {
             warn!("邮件通知功能已禁用");
         }
 
-        let credentials = Credentials::new(
-            config.smtp_username.clone(),
-            config.smtp_password.clone(),
-        );
+        let credentials =
+            Credentials::new(config.smtp_username.clone(), config.smtp_password.clone());
 
         // 使用更稳定的SMTP配置
         let smtp = if config.smtp_port == 587 {
@@ -51,7 +49,11 @@ impl EmailNotifier {
         Ok(Self { config, smtp })
     }
 
-    pub async fn send_alert_notification(&self, alert: &Alert, current_price: f64) -> anyhow::Result<()> {
+    pub async fn send_alert_notification(
+        &self,
+        alert: &Alert,
+        current_price: f64,
+    ) -> anyhow::Result<()> {
         if !self.config.enabled {
             info!("邮件通知已禁用，跳过发送");
             return Ok(());
@@ -61,7 +63,8 @@ impl EmailNotifier {
         let body = self.create_alert_email_body(alert, current_price)?;
 
         // 优先使用预警设置的邮箱，否则使用默认邮箱
-        let target_email = alert.notification_email
+        let target_email = alert
+            .notification_email
             .as_ref()
             .unwrap_or(&self.config.to_email);
 
@@ -76,13 +79,20 @@ impl EmailNotifier {
         let subject = "交易预警系统 - 测试邮件";
         let body = self.create_test_email_body();
 
-        self.send_email_to(&subject, &body, &self.config.to_email).await
+        self.send_email_to(subject, &body, &self.config.to_email)
+            .await
     }
 
-    async fn send_email_to(&self, subject: &str, body: &str, target_email: &str) -> anyhow::Result<()> {
-        let from_mailbox: Mailbox = format!("{} <{}>", self.config.from_name, self.config.from_email)
-            .parse()
-            .map_err(|e| anyhow::anyhow!("无效的发件人邮箱格式: {}", e))?;
+    async fn send_email_to(
+        &self,
+        subject: &str,
+        body: &str,
+        target_email: &str,
+    ) -> anyhow::Result<()> {
+        let from_mailbox: Mailbox =
+            format!("{} <{}>", self.config.from_name, self.config.from_email)
+                .parse()
+                .map_err(|e| anyhow::anyhow!("无效的发件人邮箱格式: {}", e))?;
 
         let to_mailbox: Mailbox = target_email
             .parse()
@@ -175,7 +185,7 @@ impl EmailNotifier {
 
     fn create_test_email_body(&self) -> String {
         let now = Local::now();
-        
+
         format!(
             r#"
 <!DOCTYPE html>
@@ -247,8 +257,8 @@ mod tests {
 
         let notifier = EmailNotifier::new(config).unwrap();
         let test_body = notifier.create_test_email_body();
-        
+
         assert!(test_body.contains("邮件系统测试成功"));
         assert!(test_body.contains("smtp.test.com"));
     }
-} 
+}

@@ -52,12 +52,12 @@ impl fmt::Display for AlertStatus {
 
 impl PartialEq<&str> for AlertStatus {
     fn eq(&self, other: &&str) -> bool {
-        match (self, *other) {
-            (AlertStatus::Active, "active") => true,
-            (AlertStatus::Triggered, "triggered") => true,
-            (AlertStatus::Cancelled, "cancelled") => true,
-            _ => false,
-        }
+        matches!(
+            (self, *other),
+            (AlertStatus::Active, "active") | 
+            (AlertStatus::Triggered, "triggered") | 
+            (AlertStatus::Cancelled, "cancelled")
+        )
     }
 }
 
@@ -106,7 +106,9 @@ impl From<Alert> for AlertForTemplate {
             status: alert.status.to_string(),
             created_at: alert.created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
             updated_at: alert.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
-            triggered_at: alert.triggered_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
+            triggered_at: alert
+                .triggered_at
+                .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string()),
             notification_email: alert.notification_email,
         }
     }
@@ -136,4 +138,4 @@ impl Alert {
             AlertCondition::Below => current_price <= self.price,
         }
     }
-} 
+}

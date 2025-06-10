@@ -1,19 +1,19 @@
+use crate::config::PriceFetcherConfig;
+use crate::email::EmailNotifier;
 use anyhow::Result;
 use chrono::Utc;
+
 use reqwest::Client;
 use serde::Deserialize;
 use sqlx::SqlitePool;
-use std::time::Duration;
-use tokio::time;
-use tracing::{info, error, warn};
-use rand;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::sync::Semaphore;
-use std::sync::atomic::{AtomicU64, Ordering};
-use crate::config::PriceFetcherConfig;
-use crate::email::EmailNotifier;
+use tokio::time;
+use tracing::{error, info, warn};
 
 #[derive(Debug, Deserialize)]
 struct YahooQuoteResponse {
@@ -75,7 +75,11 @@ pub struct PriceService {
 }
 
 impl PriceService {
-    pub fn new(db: SqlitePool, config: &PriceFetcherConfig, email_notifier: Arc<EmailNotifier>) -> Self {
+    pub fn new(
+        db: SqlitePool,
+        config: &PriceFetcherConfig,
+        email_notifier: Arc<EmailNotifier>,
+    ) -> Self {
         Self {
             client: Client::builder()
                 .timeout(Duration::from_secs(config.request_timeout_secs))
@@ -94,7 +98,7 @@ impl PriceService {
 
     pub async fn start(&self, config: &PriceFetcherConfig) -> Result<()> {
         info!("Starting price service...");
-        
+
         let mut interval = time::interval(self.update_interval);
         loop {
             interval.tick().await;
@@ -109,7 +113,8 @@ impl PriceService {
     async fn check_and_reset_request_count(&self) {
         let now = Utc::now().timestamp() as u64;
         let last_reset = self.last_reset.load(Ordering::Relaxed);
-        if now - last_reset >= 3600 { // 1小时
+        if now - last_reset >= 3600 {
+            // 1小时
             self.request_count.store(0, Ordering::Relaxed);
             self.last_reset.store(now, Ordering::Relaxed);
             info!("Reset request count");
@@ -131,14 +136,16 @@ impl PriceService {
         for symbol in symbols {
             // 检查缓存
             if let Some(cached) = self.get_cached_price(&symbol.symbol).await {
-                if Utc::now() - cached.timestamp < chrono::Duration::seconds(config.cache_ttl_secs as i64) {
+                if Utc::now() - cached.timestamp
+                    < chrono::Duration::seconds(config.cache_ttl_secs as i64)
+                {
                     continue; // 缓存未过期，跳过更新
                 }
             }
 
             // 获取信号量许可
             let _permit = self.semaphore.acquire().await?;
-            
+
             // 检查请求限制
             if self.request_count.load(Ordering::Relaxed) >= config.max_requests_per_hour {
                 warn!("Rate limit reached, waiting for next hour");
@@ -146,7 +153,10 @@ impl PriceService {
                 continue;
             }
 
-            match self.fetch_price_with_retry(&symbol.symbol, config.max_retries).await {
+            match self
+                .fetch_price_with_retry(&symbol.symbol, config.max_retries)
+                .await
+            {
                 Ok(price) => {
                     self.request_count.fetch_add(1, Ordering::Relaxed);
                     if let Err(e) = self.save_price(&price).await {
@@ -190,14 +200,22 @@ impl PriceService {
                     retries += 1;
                     if retries < max_retries {
                         let delay = Duration::from_secs(2u64.pow(retries)); // 指数退避
-                        warn!("Retry {} for {} after {}s: {}", retries, symbol, delay.as_secs(), error_msg);
+                        warn!(
+                            "Retry {} for {} after {}s: {}",
+                            retries,
+                            symbol,
+                            delay.as_secs(),
+                            error_msg
+                        );
                         time::sleep(delay).await;
                     }
                 }
             }
         }
 
-        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("Failed to fetch price after {} retries", max_retries)))
+        Err(last_error.unwrap_or_else(|| {
+            anyhow::anyhow!("Failed to fetch price after {} retries", max_retries)
+        }))
     }
 
     async fn fetch_price(&self, symbol: &str) -> Result<StockPrice> {
@@ -208,9 +226,13 @@ impl PriceService {
 
         info!("Fetching price for {} from Yahoo Finance", symbol);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
             .send()
             .await?;
 
@@ -221,15 +243,23 @@ impl PriceService {
         let yahoo_response: YahooQuoteResponse = response.json().await?;
 
         if let Some(error) = yahoo_response.chart.error {
-            return Err(anyhow::anyhow!("Yahoo Finance error: {} - {}", error.code, error.description));
+            return Err(anyhow::anyhow!(
+                "Yahoo Finance error: {} - {}",
+                error.code,
+                error.description
+            ));
         }
 
-        let result = yahoo_response.chart.result
+        let result = yahoo_response
+            .chart
+            .result
             .into_iter()
             .next()
             .ok_or_else(|| anyhow::anyhow!("No data returned for symbol {}", symbol))?;
 
-        let price = result.meta.regular_market_price
+        let price = result
+            .meta
+            .regular_market_price
             .ok_or_else(|| anyhow::anyhow!("No price data for symbol {}", symbol))?;
 
         let volume = result.meta.regular_market_volume.unwrap_or(0);
@@ -242,11 +272,15 @@ impl PriceService {
         };
 
         // 更新缓存
-        self.set_cached_price(symbol.to_string(), PriceCache {
-            price,
-            volume,
-            timestamp: stock_price.timestamp,
-        }).await;
+        self.set_cached_price(
+            symbol.to_string(),
+            PriceCache {
+                price,
+                volume,
+                timestamp: stock_price.timestamp,
+            },
+        )
+        .await;
 
         Ok(stock_price)
     }
@@ -284,7 +318,7 @@ impl PriceService {
 
     async fn save_price(&self, price: &StockPrice) -> Result<()> {
         info!("Saving price for {}: ${:.2}", price.symbol, price.price);
-        
+
         // 保存价格历史
         sqlx::query!(
             r#"
@@ -332,25 +366,39 @@ impl PriceService {
                         continue;
                     }
 
-                    info!("🔔 Alert {} triggered! {} is now ${:.2} (target: {} ${:.2})", 
-                          alert_id, symbol, current_price, alert.condition, alert.price);
+                    info!(
+                        "🔔 Alert {} triggered! {} is now ${:.2} (target: {} ${:.2})",
+                        alert_id, symbol, current_price, alert.condition, alert.price
+                    );
 
                     // 获取完整的预警信息并发送邮件通知
                     match self.get_alert_by_id(alert_id).await {
                         Ok(Some(full_alert)) => {
                             info!("Sending email notification for alert {}", alert_id);
-                            if let Err(e) = self.email_notifier
-                                .send_alert_notification(&full_alert, current_price).await {
-                                error!("Failed to send email notification for alert {}: {}", alert_id, e);
+                            if let Err(e) = self
+                                .email_notifier
+                                .send_alert_notification(&full_alert, current_price)
+                                .await
+                            {
+                                error!(
+                                    "Failed to send email notification for alert {}: {}",
+                                    alert_id, e
+                                );
                             } else {
-                                info!("✅ Email notification sent successfully for alert {}", alert_id);
+                                info!(
+                                    "✅ Email notification sent successfully for alert {}",
+                                    alert_id
+                                );
                             }
                         }
                         Ok(None) => {
                             error!("Alert {} not found after triggering", alert_id);
                         }
                         Err(e) => {
-                            error!("Failed to fetch alert {} for email notification: {}", alert_id, e);
+                            error!(
+                                "Failed to fetch alert {} for email notification: {}",
+                                alert_id, e
+                            );
                         }
                     }
                 }
@@ -423,4 +471,4 @@ impl Clone for PriceService {
             email_notifier: self.email_notifier.clone(),
         }
     }
-} 
+}

@@ -1,6 +1,6 @@
-use sqlx::{sqlite::SqlitePool, Row};
+use crate::models::{Alert, AlertCondition, AlertStatus, CreateAlertRequest};
 use anyhow::Result;
-use crate::models::{Alert, CreateAlertRequest, AlertCondition, AlertStatus};
+use sqlx::{sqlite::SqlitePool, Row};
 
 pub struct Database {
     pool: SqlitePool,
@@ -9,11 +9,11 @@ pub struct Database {
 impl Database {
     pub async fn new(url: &str) -> Result<Self> {
         let pool = SqlitePool::connect(url).await?;
-        
+
         tracing::info!("运行数据库迁移...");
         sqlx::migrate!("./migrations").run(&pool).await?;
         tracing::info!("数据库迁移完成");
-        
+
         Ok(Self { pool })
     }
 
@@ -122,7 +122,11 @@ impl Database {
         Ok(result.rows_affected() > 0)
     }
 
-    pub async fn update_alert(&self, id: i64, request: &CreateAlertRequest) -> Result<Option<Alert>> {
+    pub async fn update_alert(
+        &self,
+        id: i64,
+        request: &CreateAlertRequest,
+    ) -> Result<Option<Alert>> {
         let symbol = &request.symbol;
         let condition_str = request.condition.to_string().to_lowercase();
         let condition = condition_str.as_str();
@@ -157,4 +161,4 @@ impl Database {
 
 // Re-export common types
 pub use sqlx::Error as DbError;
-pub type DbResult<T> = Result<T, DbError>; 
+pub type DbResult<T> = Result<T, DbError>;
