@@ -1,0 +1,1 @@
+web: trade_alert_rust 

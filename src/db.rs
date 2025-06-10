@@ -9,6 +9,11 @@ pub struct Database {
 impl Database {
     pub async fn new(url: &str) -> Result<Self> {
         let pool = SqlitePool::connect(url).await?;
+        
+        tracing::info!("运行数据库迁移...");
+        sqlx::migrate!("./migrations").run(&pool).await?;
+        tracing::info!("数据库迁移完成");
+        
         Ok(Self { pool })
     }
 

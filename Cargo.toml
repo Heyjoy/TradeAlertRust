@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 default-run = "trade_alert_rust"
 
+[[bin]]
+name = "trade_alert_rust"
+path = "src/main.rs"
+
 [lib]
 name = "trade_alert_rust"
 path = "src/lib.rs"
