@@ -1,0 +1,45 @@
+# DSM 6.2.4 兼容的 Dockerfile
+FROM rust:1.60-slim as builder
+
+WORKDIR /app
+COPY . .
+
+# 构建配置 - DSM 6.2.4 兼容
+ENV CARGO_TERM_COLOR=never
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 编译发布版本
+RUN cargo build --release --bin trade_alert_rust
+
+# 运行时镜像 - 使用较老但稳定的基础镜像
+FROM debian:buster-slim
+
+# 安装运行时依赖
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl1.1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && adduser --disabled-password --gecos '' appuser
+
+# 复制二进制文件
+COPY --from=builder /app/target/release/trade_alert_rust /usr/local/bin/
+COPY --from=builder /app/templates /app/templates
+COPY --from=builder /app/static /app/static
+
+# 创建数据目录
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
+USER appuser
+WORKDIR /app
+
+# 暴露端口
+EXPOSE 8000
+
+# 启动命令
+CMD ["trade_alert_rust"] 

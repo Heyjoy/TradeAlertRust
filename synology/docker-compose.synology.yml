@@ -1,0 +1,166 @@
+version: '3.8'
+
+# Synology NAS 优化的 TradeAlertRust 部署配置
+# 路径: /volume1/docker/trade-alert/docker-compose.yml
+
+services:
+  trade-alert:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.nas
+    image: trade-alert-rust:latest
+    container_name: trade-alert-rust
+    restart: unless-stopped
+    
+    # Synology端口映射 - 避免冲突
+    ports:
+      - "8000:8000"     # 主应用端口
+      - "8001:8001"     # 管理端口（可选）
+    
+    # 环境变量 - 适配Synology路径
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - DATABASE_URL=sqlite:///app/data/alerts.db
+      - RUST_LOG=info
+      
+      # 邮件配置
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST:-smtp.gmail.com}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT:-587}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME:-TradeAlert}
+      
+      # Synology特定配置
+      - TZ=Asia/Shanghai
+      - PUID=1000
+      - PGID=1000
+    
+    # Synology标准卷挂载
+    volumes:
+      - /volume1/docker/trade-alert/data:/app/data
+      - /volume1/docker/trade-alert/logs:/app/logs
+      - /volume1/docker/trade-alert/config:/app/config
+      - /volume1/docker/trade-alert/backups:/app/backups
+    
+    # 网络配置
+    networks:
+      - synology-trade-network
+    
+    # 健康检查 - Synology Container Manager友好
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Synology资源限制建议
+    deploy:
+      resources:
+        limits:
+          memory: 512M        # 适中的内存限制
+          cpus: '0.5'         # 不占用太多CPU
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+
+  # Redis缓存 - 可选但推荐
+  redis:
+    image: redis:7-alpine
+    container_name: trade-alert-redis
+    restart: unless-stopped
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - /volume1/docker/trade-alert/redis:/data
+    
+    networks:
+      - synology-trade-network
+    
+    # Redis配置 - Synology NAS友好
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    
+    environment:
+      - TZ=Asia/Shanghai
+
+  # 监控工具 - Synology Container Manager集成
+  watchtower:
+    image: containrrr/watchtower
+    container_name: trade-alert-watchtower
+    restart: unless-stopped
+    
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /volume1/docker/trade-alert/logs:/logs
+    
+    environment:
+      - TZ=Asia/Shanghai
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_SCHEDULE=0 0 2 * * SUN  # 每周日凌晨2点检查更新
+      - WATCHTOWER_NOTIFICATIONS=email
+      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=${EMAIL_USERNAME}
+      - WATCHTOWER_NOTIFICATION_EMAIL_TO=${EMAIL_USERNAME}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=${EMAIL_SMTP_HOST}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=${EMAIL_SMTP_PORT}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=${EMAIL_USERNAME}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=${EMAIL_PASSWORD}
+
+  # 数据库备份服务
+  db-backup:
+    image: alpine:latest
+    container_name: trade-alert-backup
+    restart: "no"  # 仅在需要时运行
+    
+    volumes:
+      - /volume1/docker/trade-alert/data:/data
+      - /volume1/docker/trade-alert/backups:/backups
+      - /volume1/docker/trade-alert/scripts:/scripts
+    
+    environment:
+      - TZ=Asia/Shanghai
+    
+    # 备份脚本
+    command: >
+      sh -c "
+      apk add --no-cache sqlite &&
+      while true; do
+        DATE=$$(date +%Y%m%d_%H%M%S) &&
+        sqlite3 /data/alerts.db '.backup /backups/alerts_backup_$$DATE.db' &&
+        find /backups -name 'alerts_backup_*.db' -mtime +30 -delete &&
+        echo \"$$(date): 数据库备份完成 - alerts_backup_$$DATE.db\" &&
+        sleep 86400
+      done
+      "
+
+volumes:
+  # Synology建议使用bind mount而不是named volumes
+  synology_trade_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/trade-alert/data
+
+networks:
+  synology-trade-network:
+    driver: bridge
+    name: trade-alert-network
+
+# Synology Container Manager标签
+x-synology-labels:
+  com.synology.app: "trade-alert-rust"
+  com.synology.version: "1.0.0"
+  com.synology.description: "股票预警系统"
+  com.synology.maintainer: "TradeAlert Team" 

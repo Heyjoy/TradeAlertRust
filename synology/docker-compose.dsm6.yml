@@ -1,0 +1,56 @@
+version: '3.3'  # DSM 6.2.4 兼容版本
+
+services:
+  trade-alert:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.dsm6
+    image: trade-alert-rust:dsm6
+    container_name: trade-alert-rust
+    restart: unless-stopped
+    
+    ports:
+      - "8000:8000"
+    
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - DATABASE_URL=sqlite:///app/data/alerts.db
+      - RUST_LOG=info
+      - TZ=Asia/Shanghai
+      
+      # 🔧 请修改为你的实际邮件配置
+      - EMAIL_SMTP_HOST=smtp.gmail.com
+      - EMAIL_SMTP_PORT=587
+      - EMAIL_USERNAME=your-email@gmail.com
+      - EMAIL_PASSWORD=your-app-password
+      - EMAIL_FROM_NAME=TradeAlert股票预警
+    
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+    
+    # DSM 6.2.4 简化的健康检查
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:5-alpine  # DSM 6.2.4 兼容版本
+    container_name: trade-alert-redis
+    restart: unless-stopped
+    
+    volumes:
+      - ./redis:/data
+    
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+
+networks:
+  default:
+    driver: bridge 

@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  trade-alert:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.nas
+    container_name: trade-alert-rust
+    restart: unless-stopped
+    
+    # 端口映射
+    ports:
+      - "8000:8000"
+    
+    # 环境变量
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+      - DATABASE_URL=sqlite:///app/data/alerts.db
+      - RUST_LOG=info
+      
+      # 邮件配置 - 从外部文件加载
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT}
+      - EMAIL_USERNAME=${EMAIL_USERNAME}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
+    
+    # 数据卷挂载
+    volumes:
+      - nas_trade_data:/app/data
+      - ../logs:/app/logs
+    
+    # 网络配置
+    networks:
+      - trade-network
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # 资源限制 (NAS友好)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+
+  # 可选：添加Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: trade-alert-redis
+    restart: unless-stopped
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - nas_redis_data:/data
+    
+    networks:
+      - trade-network
+    
+    # Redis配置
+    command: redis-server --appendonly yes --maxmemory 128mb
+
+  # 可选：添加监控
+  watchtower:
+    image: containrrr/watchtower
+    container_name: trade-alert-watchtower
+    restart: unless-stopped
+    
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    
+    # 自动更新检查 (每天2点)
+    command: --schedule "0 0 2 * * *" --cleanup trade-alert-rust
+
+volumes:
+  nas_trade_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /volume1/docker/trade-alert/data
+  
+  nas_redis_data:
+    driver: local
+
+networks:
+  trade-network:
+    driver: bridge 

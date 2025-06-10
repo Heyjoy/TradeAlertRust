@@ -70,10 +70,37 @@ impl Config {
 
         let mut result: Config = config.try_deserialize()?;
         
+        // Railway/Production 环境变量处理
+        result.handle_production_env()?;
+        
         // 处理环境变量占位符
         result.resolve_placeholders()?;
         
         Ok(result)
+    }
+
+    fn handle_production_env(&mut self) -> anyhow::Result<()> {
+        use std::env;
+        
+        // Railway的PORT环境变量支持
+        if let Ok(port) = env::var("PORT") {
+            if let Ok(port_num) = port.parse::<u16>() {
+                tracing::info!("使用Railway PORT环境变量: {}", port_num);
+                self.server.port = port_num;
+                // Railway要求监听0.0.0.0而不是127.0.0.1
+                self.server.host = "0.0.0.0".to_string();
+            }
+        }
+        
+        // 如果是生产环境，使用内存数据库作为fallback
+        if env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("PORT").is_ok() {
+            // 保持SQLite，但确保文件路径正确
+            if !self.database.url.starts_with("sqlite:") {
+                self.database.url = "sqlite:trade_alert.db".to_string();
+            }
+        }
+        
+        Ok(())
     }
 
     fn resolve_placeholders(&mut self) -> anyhow::Result<()> {
