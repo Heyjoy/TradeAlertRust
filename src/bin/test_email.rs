@@ -12,9 +12,9 @@ async fn main() -> anyhow::Result<()> {
     println!("邮件配置:");
     println!("SMTP服务器: {}", config.email.smtp_server);
     println!("SMTP端口: {}", config.email.smtp_port);
-    println!("用户名: {}", config.email.smtp_username);
-    println!("发件人: {}", config.email.from_email);
-    println!("收件人: {}", config.email.to_email);
+    println!("用户名: {}***", &config.email.smtp_username.chars().take(3).collect::<String>());
+    println!("发件人: {}***", &config.email.from_email.chars().take(3).collect::<String>());
+    println!("收件人: {}***", &config.email.to_email.chars().take(3).collect::<String>());
     println!("是否启用: {}", config.email.enabled);
     
     // 创建邮件通知器

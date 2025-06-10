@@ -27,6 +27,18 @@ TRADE_ALERT_EMAIL_TO_EMAIL=你的Gmail地址
 TRADE_ALERT_EMAIL_ENABLED=true
 ```
 
+#### 🔒 重要安全提示
+设置敏感变量后，建议使用Railway的**Sealed Variables**功能：
+1. 点击变量右侧的"⋯"菜单
+2. 选择"Seal"选项
+3. 推荐对以下变量使用Seal：
+   - `TRADE_ALERT_EMAIL_SMTP_PASSWORD` (必须)
+   - `TRADE_ALERT_EMAIL_SMTP_USERNAME` (建议)
+   - `TRADE_ALERT_EMAIL_FROM_EMAIL` (建议)
+   - `TRADE_ALERT_EMAIL_TO_EMAIL` (建议)
+
+详细安全配置请参考：`RAILWAY_SECURITY_GUIDE.md`
+
 #### 可选配置
 ```
 TRADE_ALERT_LOGGING_LEVEL=info
