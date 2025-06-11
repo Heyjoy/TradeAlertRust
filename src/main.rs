@@ -297,7 +297,39 @@ async fn get_latest_price(
             "created_at": row.created_at
         }))
         .into_response(),
-        Ok(None) => (StatusCode::NOT_FOUND, "No price data found").into_response(),
+        Ok(None) => {
+            // 数据库没有，实时查Yahoo
+            match fetch_price_from_yahoo(&symbol).await {
+                Ok((price, volume)) => {
+                    let now = chrono::Utc::now().naive_utc();
+                    // 写入数据库
+                    let _ = sqlx::query!(
+                        r#"
+                        INSERT INTO price_history (symbol, price, volume, timestamp)
+                        VALUES (?, ?, ?, ?)
+                        "#,
+                        symbol,
+                        price,
+                        volume,
+                        now,
+                    )
+                    .execute(state.db.pool())
+                    .await;
+                    Json(serde_json::json!({
+                        "symbol": symbol,
+                        "price": price,
+                        "volume": volume,
+                        "timestamp": now,
+                        "created_at": now
+                    }))
+                    .into_response()
+                }
+                Err(e) => {
+                    tracing::error!("Failed to fetch price from Yahoo for {}: {}", symbol, e);
+                    (StatusCode::NOT_FOUND, "Unable to fetch current price").into_response()
+                }
+            }
+        }
         Err(e) => {
             tracing::error!("Failed to get latest price for {}: {}", symbol, e);
             (
@@ -307,6 +339,63 @@ async fn get_latest_price(
                 .into_response()
         }
     }
+}
+
+// 辅助函数：直接从Yahoo API获取价格
+async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64)> {
+    use serde::Deserialize;
+    #[derive(Debug, Deserialize)]
+    struct YahooQuoteResponse {
+        chart: YahooChart,
+    }
+    #[derive(Debug, Deserialize)]
+    struct YahooChart {
+        result: Vec<YahooResult>,
+        error: Option<YahooError>,
+    }
+    #[derive(Debug, Deserialize)]
+    struct YahooResult {
+        meta: YahooMeta,
+    }
+    #[derive(Debug, Deserialize)]
+    struct YahooMeta {
+        #[serde(rename = "regularMarketPrice")]
+        regular_market_price: Option<f64>,
+        #[serde(rename = "regularMarketVolume")]
+        regular_market_volume: Option<i64>,
+    }
+    #[derive(Debug, Deserialize)]
+    struct YahooError {
+        code: String,
+        description: String,
+    }
+    let client = reqwest::Client::new();
+    let url = format!("https://query1.finance.yahoo.com/v8/finance/chart/{}", symbol);
+    let response = client
+        .get(&url)
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .timeout(std::time::Duration::from_secs(10))
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!("HTTP error: {}", response.status()));
+    }
+    let yahoo_response: YahooQuoteResponse = response.json().await?;
+    if let Some(error) = yahoo_response.chart.error {
+        return Err(anyhow::anyhow!("Yahoo Finance error: {} - {}", error.code, error.description));
+    }
+    let result = yahoo_response
+        .chart
+        .result
+        .into_iter()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("No data returned for symbol {}", symbol))?;
+    let price = result
+        .meta
+        .regular_market_price
+        .ok_or_else(|| anyhow::anyhow!("No price data for symbol {}", symbol))?;
+    let volume = result.meta.regular_market_volume.unwrap_or(0);
+    Ok((price, volume))
 }
 
 async fn send_test_email(State(state): State<AppState>) -> impl IntoResponse {
