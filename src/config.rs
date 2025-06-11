@@ -96,9 +96,12 @@ impl Config {
 
         // 如果是生产环境，使用内存数据库作为fallback
         if env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("PORT").is_ok() {
-            // 保持SQLite，但确保文件路径正确
-            if !self.database.url.starts_with("sqlite:") {
-                self.database.url = "sqlite:trade_alert.db".to_string();
+            // Railway/Production: 强制使用 `data` 目录
+            self.database.url = "sqlite:data/trade_alert.db".to_string();
+        } else {
+            // Local development: 也建议使用 `data` 目录
+            if !self.database.url.contains('/') && !self.database.url.contains('\\') {
+                self.database.url = "sqlite:data/trade_alert.db".to_string();
             }
         }
 

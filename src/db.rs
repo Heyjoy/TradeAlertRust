@@ -1,6 +1,7 @@
 use crate::models::{Alert, AlertStatus, CreateAlertRequest};
 use anyhow::Result;
 use sqlx::sqlite::SqlitePool;
+use std::path::Path;
 
 pub struct Database {
     pool: SqlitePool,
@@ -8,6 +9,24 @@ pub struct Database {
 
 impl Database {
     pub async fn new(url: &str) -> Result<Self> {
+        // 从 URL 中提取数据库文件路径
+        if let Some(db_path_str) = url.strip_prefix("sqlite:") {
+            let db_path = Path::new(db_path_str);
+            // 确保父目录存在
+            if let Some(parent_dir) = db_path.parent() {
+                if !parent_dir.exists() {
+                    tracing::info!("创建数据库目录: {}", parent_dir.display());
+                    std::fs::create_dir_all(parent_dir)?;
+                }
+            }
+            // 如果数据库文件不存在，先创建一个空文件
+            // 这解决了OneDrive环境中SQLite无法自动创建文件的问题
+            if !db_path.exists() {
+                tracing::info!("创建数据库文件: {}", db_path.display());
+                std::fs::File::create(db_path)?;
+            }
+        }
+
         let pool = SqlitePool::connect(url).await?;
 
         tracing::info!("运行数据库迁移...");
