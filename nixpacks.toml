@@ -1,2 +1,2 @@
 [start]
-cmd = "trade_alert_rust" 
+cmd = "target/release/trade_alert_rust" 
