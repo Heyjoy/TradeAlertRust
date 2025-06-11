@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT DISTINCT symbol\n            FROM alerts\n            WHERE status = 'active'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "symbol",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f0e494bc7a2f6e8521611ec6d2371962ecfea17b69a9d6275b7d4661a7c7516e"
+}

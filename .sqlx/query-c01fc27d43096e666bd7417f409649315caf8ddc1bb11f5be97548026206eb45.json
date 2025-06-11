@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            INSERT INTO alerts (symbol, condition, price, status)\n            VALUES (?, ?, ?, 'active')\n            RETURNING id, symbol, condition as \"condition: _\", price, \n                     status as \"status: _\", created_at, updated_at, triggered_at\n            ",
+  "query": "\n            INSERT INTO alerts (symbol, condition, price, status, notification_email)\n            VALUES (?, ?, ?, 'active', ?)\n            RETURNING id, symbol, condition as \"condition: _\", price, \n                     status as \"status: _\", created_at, updated_at, triggered_at, notification_email\n            ",
   "describe": {
     "columns": [
       {
@@ -42,10 +42,15 @@
         "name": "triggered_at",
         "ordinal": 7,
         "type_info": "Datetime"
+      },
+      {
+        "name": "notification_email",
+        "ordinal": 8,
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 4
     },
     "nullable": [
       false,
@@ -55,8 +60,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "de56ce6689b5b84788a7879b28f9853787932e1935203b545d9f2bccc59163ef"
+  "hash": "c01fc27d43096e666bd7417f409649315caf8ddc1bb11f5be97548026206eb45"
 }

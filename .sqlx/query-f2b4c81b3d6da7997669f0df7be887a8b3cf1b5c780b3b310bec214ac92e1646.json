@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT price, volume, timestamp, created_at\n        FROM price_history\n        WHERE symbol = ?\n        ORDER BY timestamp DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "price",
+        "ordinal": 0,
+        "type_info": "Float"
+      },
+      {
+        "name": "volume",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 2,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f2b4c81b3d6da7997669f0df7be887a8b3cf1b5c780b3b310bec214ac92e1646"
+}

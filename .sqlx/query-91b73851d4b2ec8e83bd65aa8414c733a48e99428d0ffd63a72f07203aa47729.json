@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id, symbol, condition as \"condition: _\", price, \n                   status as \"status: _\", created_at, updated_at, triggered_at, notification_email\n            FROM alerts\n            ORDER BY created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Int64"
+      },
+      {
+        "name": "symbol",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "condition: _",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "price",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "status: _",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "triggered_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "notification_email",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "91b73851d4b2ec8e83bd65aa8414c733a48e99428d0ffd63a72f07203aa47729"
+}

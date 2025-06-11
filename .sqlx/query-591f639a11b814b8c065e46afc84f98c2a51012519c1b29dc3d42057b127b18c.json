@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT id, symbol, condition as \"condition: _\", price, \n                   status as \"status: _\", created_at, updated_at, triggered_at\n            FROM alerts\n            ORDER BY created_at DESC\n            ",
+  "query": "\n            SELECT id, symbol, condition as \"condition: _\", price, \n                   status as \"status: _\", created_at, updated_at, triggered_at, notification_email\n            FROM alerts\n            WHERE id = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -42,10 +42,15 @@
         "name": "triggered_at",
         "ordinal": 7,
         "type_info": "Datetime"
+      },
+      {
+        "name": "notification_email",
+        "ordinal": 8,
+        "type_info": "Text"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -55,8 +60,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "8fbe3fa085d28f21949532c8d3904c9e73dcc9d10559f68d33dd6fc28805c6b2"
+  "hash": "591f639a11b814b8c065e46afc84f98c2a51012519c1b29dc3d42057b127b18c"
 }

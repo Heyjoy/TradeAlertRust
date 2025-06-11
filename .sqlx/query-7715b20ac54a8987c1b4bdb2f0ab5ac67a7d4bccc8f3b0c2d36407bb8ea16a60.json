@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT id, symbol, condition as \"condition: _\", price, \n                   status as \"status: _\", created_at, updated_at, triggered_at\n            FROM alerts\n            WHERE id = ?\n            ",
+  "query": "\n            SELECT id, symbol, condition as \"condition: crate::models::AlertCondition\", \n                   price, status as \"status: crate::models::AlertStatus\", \n                   created_at, updated_at, triggered_at, notification_email\n            FROM alerts\n            WHERE id = ?\n            ",
   "describe": {
     "columns": [
       {
@@ -14,7 +14,7 @@
         "type_info": "Text"
       },
       {
-        "name": "condition: _",
+        "name": "condition: crate::models::AlertCondition",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -24,7 +24,7 @@
         "type_info": "Float"
       },
       {
-        "name": "status: _",
+        "name": "status: crate::models::AlertStatus",
         "ordinal": 4,
         "type_info": "Text"
       },
@@ -42,6 +42,11 @@
         "name": "triggered_at",
         "ordinal": 7,
         "type_info": "Datetime"
+      },
+      {
+        "name": "notification_email",
+        "ordinal": 8,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -55,8 +60,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "71d92ca72b4c9c2feb9893152c55e2d0daf75569e8054fef871b88ec3dfacbdd"
+  "hash": "7715b20ac54a8987c1b4bdb2f0ab5ac67a7d4bccc8f3b0c2d36407bb8ea16a60"
 }

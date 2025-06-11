@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE alerts\n            SET symbol = ?, condition = ?, price = ?, notification_email = ?, updated_at = CURRENT_TIMESTAMP\n            WHERE id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "71de0e5e0a6b47a0dc3697b6e83e5eeea9ca67f2ed04312f0e641160c2e94b73"
+}
