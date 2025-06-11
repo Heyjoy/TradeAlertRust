@@ -54,9 +54,9 @@ impl PartialEq<&str> for AlertStatus {
     fn eq(&self, other: &&str) -> bool {
         matches!(
             (self, *other),
-            (AlertStatus::Active, "active") | 
-            (AlertStatus::Triggered, "triggered") | 
-            (AlertStatus::Cancelled, "cancelled")
+            (AlertStatus::Active, "active")
+                | (AlertStatus::Triggered, "triggered")
+                | (AlertStatus::Cancelled, "cancelled")
         )
     }
 }
@@ -91,6 +91,7 @@ pub struct AlertForTemplate {
     pub price: f64,
     pub status: String,
     pub created_at: String,
+    #[allow(dead_code)]
     pub updated_at: String,
     pub triggered_at: Option<String>,
     pub notification_email: Option<String>,
@@ -132,6 +133,7 @@ impl From<Alert> for AlertResponse {
 
 // 实现一些辅助方法
 impl Alert {
+    #[allow(dead_code)]
     pub fn is_triggered(&self, current_price: f64) -> bool {
         match self.condition {
             AlertCondition::Above => current_price >= self.price,

@@ -37,6 +37,7 @@ struct YahooMeta {
     regular_market_price: Option<f64>,
     #[serde(rename = "regularMarketVolume")]
     regular_market_volume: Option<i64>,
+    #[allow(dead_code)]
     symbol: String,
 }
 
@@ -57,7 +58,9 @@ struct StockPrice {
 // 缓存结构
 #[derive(Debug, Clone)]
 struct PriceCache {
+    #[allow(dead_code)]
     price: f64,
+    #[allow(dead_code)]
     volume: i64,
     timestamp: chrono::DateTime<Utc>,
 }
@@ -96,6 +99,7 @@ impl PriceService {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn start(&self, config: &PriceFetcherConfig) -> Result<()> {
         info!("Starting price service...");
 
@@ -110,6 +114,7 @@ impl PriceService {
         }
     }
 
+    #[allow(dead_code)]
     async fn check_and_reset_request_count(&self) {
         let now = Utc::now().timestamp() as u64;
         let last_reset = self.last_reset.load(Ordering::Relaxed);

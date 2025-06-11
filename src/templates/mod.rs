@@ -4,12 +4,14 @@ use askama::Template;
 #[derive(Template)]
 #[template(path = "base.html")]
 pub struct BaseTemplate {
+    #[allow(dead_code)]
     pub title: String,
 }
 
 #[derive(Template)]
 #[template(path = "index.html")]
 pub struct IndexTemplate {
+    #[allow(dead_code)]
     pub base: BaseTemplate,
     pub alerts: Vec<AlertForTemplate>,
 }
@@ -17,6 +19,7 @@ pub struct IndexTemplate {
 #[derive(Template)]
 #[template(path = "alert_form.html")]
 pub struct AlertFormTemplate {
+    #[allow(dead_code)]
     pub base: BaseTemplate,
     pub alert: Option<AlertForTemplate>,
 }

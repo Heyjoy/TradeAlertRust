@@ -13,11 +13,9 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
-    routing::put,
     Router,
 };
 use std::sync::Arc;
-use std::time::Duration;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

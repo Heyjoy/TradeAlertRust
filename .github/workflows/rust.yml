@@ -27,7 +27,7 @@ jobs:
       run: cargo fmt -- --check
       
     - name: Clippy
-      run: cargo clippy -- -D warnings -A dead_code -A unused_imports
+      run: cargo clippy --bin trade_alert_rust -- -D warnings
       
     - name: Build
       run: cargo build --verbose

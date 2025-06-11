@@ -1,6 +1,6 @@
-use crate::models::{Alert, AlertCondition, AlertStatus, CreateAlertRequest};
+use crate::models::{Alert, AlertStatus, CreateAlertRequest};
 use anyhow::Result;
-use sqlx::{sqlite::SqlitePool, Row};
+use sqlx::sqlite::SqlitePool;
 
 pub struct Database {
     pool: SqlitePool,
@@ -89,6 +89,7 @@ impl Database {
         Ok(result.rows_affected() > 0)
     }
 
+    #[allow(dead_code)]
     pub async fn update_alert_status(&self, id: i64, status: AlertStatus) -> Result<bool> {
         let result = sqlx::query!(
             r#"
@@ -105,6 +106,7 @@ impl Database {
         Ok(result.rows_affected() > 0)
     }
 
+    #[allow(dead_code)]
     pub async fn mark_alert_triggered(&self, id: i64) -> Result<bool> {
         let result = sqlx::query!(
             r#"
@@ -161,4 +163,5 @@ impl Database {
 
 // Re-export common types
 pub use sqlx::Error as DbError;
+#[allow(dead_code)]
 pub type DbResult<T> = Result<T, DbError>;

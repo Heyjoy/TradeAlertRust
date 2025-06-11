@@ -19,6 +19,7 @@ pub struct LoggingConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct SchedulerConfig {
+    #[allow(dead_code)]
     pub default_schedule: String,
 }
 
@@ -50,6 +51,7 @@ pub struct Config {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub logging: LoggingConfig,
+    #[allow(dead_code)]
     pub scheduler: SchedulerConfig,
     pub price_fetcher: PriceFetcherConfig,
     pub email: EmailConfig,
