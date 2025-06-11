@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "target/release/trade_alert_rust"
+startCommand = "bin/trade_alert_rust"
 numReplicas = 1
 sleepApplication = false
 restartPolicyType = "ON_FAILURE"
