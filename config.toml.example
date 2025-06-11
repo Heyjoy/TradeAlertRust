@@ -30,14 +30,14 @@ pool_idle_timeout_secs = 30
 
 [email]
 # SMTP服务器配置
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
+smtp_server = "${TRADE_ALERT_EMAIL_SMTP_SERVER}"
+smtp_port = "${TRADE_ALERT_EMAIL_SMTP_PORT}"
 # 注意：以下敏感信息请使用环境变量或本地配置文件
-smtp_username = "${SMTP_USERNAME}"
-smtp_password = "${SMTP_PASSWORD}"
-from_email = "${FROM_EMAIL}"
-from_name = "交易预警系统"
+smtp_username = "${TRADE_ALERT_EMAIL_SMTP_USERNAME}"
+smtp_password = "${TRADE_ALERT_EMAIL_SMTP_PASSWORD}"
+from_email = "${TRADE_ALERT_EMAIL_FROM_EMAIL}"
+from_name = "${TRADE_ALERT_EMAIL_FROM_NAME}"
 # 接收预警的邮箱
-to_email = "${TO_EMAIL}"
+to_email = "${TRADE_ALERT_EMAIL_TO_EMAIL}"
 # 是否启用邮件通知
-enabled = true 
+enabled = ${TRADE_ALERT_EMAIL_ENABLED} 

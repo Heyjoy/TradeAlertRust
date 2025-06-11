@@ -1,0 +1,22 @@
+[email]
+smtp_server = "smtp.gmail.com"
+smtp_port = 587
+smtp_username = "infotradealert@gmail.com"  # 替换为你的Gmail
+smtp_password = "chzx zbkl rtxb qhub"     # 替换为Gmail应用专用密码
+from_email = "infotradealert@gmail.com"     # 替换为你的Gmail
+to_email = "infotradealert@gmail.com"       # 替换为你的Gmail (可以发给自己测试)
+from_name = "股票预警系统"
+enabled = true
+
+[price_fetcher]
+fetch_interval_seconds = 30
+max_concurrent_requests = 10
+request_timeout_seconds = 30
+yahoo_finance_url = "https://query1.finance.yahoo.com/v8/finance/chart"
+
+[scheduler]
+default_schedule = "0 */30 * * * *"  # 每30秒检查一次
+
+[server]
+host = "127.0.0.1"
+port = 3000 

@@ -1,0 +1,26 @@
+# 环境变量示例文件（带前缀版，与Railway一致）
+# 使用方法：将此文件复制为 .env（去掉前导下划线），然后填入真实值
+#   Windows PowerShell：Copy-Item _env.example .env
+#   Linux/macOS     ：cp _env.example .env
+
+# 📧 邮件配置（必需）
+TRADE_ALERT_EMAIL_SMTP_USERNAME=your-email@gmail.com            # 发件人/登录账号
+TRADE_ALERT_EMAIL_SMTP_PASSWORD=your-16-digit-app-password      # Gmail 应用专用密码
+TRADE_ALERT_EMAIL_FROM_EMAIL=your-email@gmail.com               # 发件人邮箱
+TRADE_ALERT_EMAIL_TO_EMAIL=your-email@gmail.com                 # 默认收件人邮箱
+
+# 如需自定义（通常保持默认即可）
+TRADE_ALERT_EMAIL_SMTP_SERVER=smtp.gmail.com
+TRADE_ALERT_EMAIL_SMTP_PORT=587
+TRADE_ALERT_EMAIL_FROM_NAME=股票预警系统
+
+# 🔧 其他可选配置
+TRADE_ALERT_LOGGING_LEVEL=info
+TRADE_ALERT_DATABASE_URL=sqlite:data/trade_alert.db
+
+# ——————————————————————————————————————————
+# 说明：
+# 1. 将文件名中的 "_" 改为 "." 并重命名为 .env
+# 2. 确保 .env 位于项目根目录且已在 .gitignore 中
+# 3. 若已存在无前缀变量，带前缀的值将覆盖它们
+# 4. Gmail 用户需开启两步验证，并使用 16 位应用专用密码 

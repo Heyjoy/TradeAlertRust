@@ -66,8 +66,8 @@ impl Config {
             .add_source(config::File::with_name("config.local").required(false))
             // 3. 最后加载主配置文件（如果存在）
             .add_source(config::File::with_name("config").required(false))
-            // 4. 环境变量具有最高优先级
-            .add_source(config::Environment::with_prefix("TRADE_ALERT").separator("_"))
+            // 4. 环境变量具有最高优先级 - 使用双下划线作为分隔符避免字段名冲突
+            .add_source(config::Environment::with_prefix("TRADE_ALERT").separator("__"))
             .build()?;
 
         let mut result: Config = config.try_deserialize()?;
