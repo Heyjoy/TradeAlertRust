@@ -30,7 +30,7 @@ struct AppState {
 async fn main() -> anyhow::Result<()> {
     // 加载.env文件（如果存在）- 必须在配置加载之前
     dotenvy::dotenv().ok();
-    println!("Loaded env vars: {:?}", std::env::vars().collect::<Vec<_>>());
+    // println!("Loaded env vars: {:?}", std::env::vars().collect::<Vec<_>>());
 
     // Load configuration
     let config = config::Config::load()?;
