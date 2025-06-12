@@ -294,13 +294,14 @@ async fn get_latest_price(
             "price": row.price,
             "volume": row.volume,
             "timestamp": row.timestamp,
-            "created_at": row.created_at
+            "created_at": row.created_at,
+            "name_en": null // 数据库无公司名，返回null
         }))
         .into_response(),
         Ok(None) => {
             // 数据库没有，实时查Yahoo
             match fetch_price_from_yahoo(&symbol).await {
-                Ok((price, volume)) => {
+                Ok((price, volume, name_en)) => {
                     let now = chrono::Utc::now().naive_utc();
                     // 写入数据库
                     let _ = sqlx::query!(
@@ -320,7 +321,8 @@ async fn get_latest_price(
                         "price": price,
                         "volume": volume,
                         "timestamp": now,
-                        "created_at": now
+                        "created_at": now,
+                        "name_en": name_en
                     }))
                     .into_response()
                 }
@@ -341,8 +343,8 @@ async fn get_latest_price(
     }
 }
 
-// 辅助函数：直接从Yahoo API获取价格
-async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64)> {
+// 辅助函数：直接从Yahoo API获取价格和公司名
+async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64, Option<String>)> {
     use serde::Deserialize;
     #[derive(Debug, Deserialize)]
     struct YahooQuoteResponse {
@@ -363,6 +365,8 @@ async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64)> {
         regular_market_price: Option<f64>,
         #[serde(rename = "regularMarketVolume")]
         regular_market_volume: Option<i64>,
+        #[serde(rename = "shortName")]
+        short_name: Option<String>,
     }
     #[derive(Debug, Deserialize)]
     struct YahooError {
@@ -395,7 +399,8 @@ async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64)> {
         .regular_market_price
         .ok_or_else(|| anyhow::anyhow!("No price data for symbol {}", symbol))?;
     let volume = result.meta.regular_market_volume.unwrap_or(0);
-    Ok((price, volume))
+    let name_en = result.meta.short_name;
+    Ok((price, volume, name_en))
 }
 
 async fn send_test_email(State(state): State<AppState>) -> impl IntoResponse {

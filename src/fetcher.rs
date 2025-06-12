@@ -39,6 +39,8 @@ struct YahooMeta {
     regular_market_volume: Option<i64>,
     #[allow(dead_code)]
     symbol: String,
+    #[serde(rename = "shortName")]
+    short_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,6 +55,7 @@ struct StockPrice {
     price: f64,
     volume: i64,
     timestamp: chrono::DateTime<Utc>,
+    name_en: Option<String>,
 }
 
 // 缓存结构
@@ -268,12 +271,14 @@ impl PriceService {
             .ok_or_else(|| anyhow::anyhow!("No price data for symbol {}", symbol))?;
 
         let volume = result.meta.regular_market_volume.unwrap_or(0);
+        let name_en = result.meta.short_name.clone();
 
         let stock_price = StockPrice {
             symbol: symbol.to_string(),
             price,
             volume,
             timestamp: Utc::now(),
+            name_en,
         };
 
         // 更新缓存
@@ -318,6 +323,7 @@ impl PriceService {
             price: new_price,
             volume: (rand::random::<i64>() % 10000) + 1000, // 1000-11000之间的随机成交量
             timestamp: Utc::now(),
+            name_en: None,
         })
     }
 

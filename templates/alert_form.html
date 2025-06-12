@@ -265,6 +265,7 @@ $(document).ready(function() {
                         <div class="price-timestamp">
                             当前价格，更新于 ${timeStr}
                         </div>
+                        ${data.name_en ? `<div class='mt-1 text-secondary'>公司名称：${data.name_en}</div>` : ''}
                     </div>
                 `);
                 
