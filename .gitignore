@@ -1,20 +1,76 @@
-# Ignore build artifacts (target directory)
-/target
+# Rust build artifacts
+/target/
+**/*.rs.bk
 
-# Ignore .env (dotenv file) (if you use one)
-/.env
+# Environment files with sensitive data
+.env
+.env.local
+.env.production
+.env.staging
 
-# Ignore SQLite database file (trade_alert.db)
-/trade_alert.db
+# Database files
 /data/
+*.db
+*.sqlite
+*.sqlite3
 
-# Ignore configuration files with sensitive data
+# Configuration files with sensitive data
 /config.toml
 /config.local.toml
 
-# Ignore Cargo.lock (if you are building a library, otherwise you may choose to commit it)
-# /Cargo.lock
+# Logs
+*.log
+logs/
 
-# Ignore IDE or editor files (optional, if you use .vscode, .idea, etc.)
-/.vscode
-/.idea 
+# IDE and editor files
+/.vscode/
+/.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# SQLx offline query cache (contains compiled queries)
+/.sqlx/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Runtime files
+*.pid
+
+# Coverage reports
+/coverage/
+*.profraw
+
+# Docker volumes and data
+/docker-data/
+
+# ngrok configuration and logs
+ngrok.yml
+ngrok.log
+
+# Email test outputs
+email_test_output.txt
+
+# Local development scripts (if any contain sensitive data)
+# Uncomment if you have local scripts with credentials
+# local_*.ps1
+# local_*.sh
+
+# Keep example files for reference
+!*.example
+!*_example.* 

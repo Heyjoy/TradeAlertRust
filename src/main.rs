@@ -228,10 +228,10 @@ async fn get_price_history(
 ) -> impl IntoResponse {
     let result = sqlx::query!(
         r#"
-        SELECT price, volume, timestamp, created_at
+        SELECT close_price as price, volume, date, created_at
         FROM price_history
         WHERE symbol = ?
-        ORDER BY timestamp DESC
+        ORDER BY date DESC
         LIMIT 100
         "#,
         symbol
@@ -247,7 +247,7 @@ async fn get_price_history(
                     serde_json::json!({
                         "price": row.price,
                         "volume": row.volume,
-                        "timestamp": row.timestamp,
+                        "date": row.date,
                         "created_at": row.created_at
                     })
                 })
@@ -277,10 +277,10 @@ async fn get_latest_price(
 ) -> impl IntoResponse {
     let result = sqlx::query!(
         r#"
-        SELECT price, volume, timestamp, created_at
+        SELECT close_price as price, volume, date, created_at
         FROM price_history
         WHERE symbol = ?
-        ORDER BY timestamp DESC
+        ORDER BY date DESC
         LIMIT 1
         "#,
         symbol
@@ -293,7 +293,7 @@ async fn get_latest_price(
             "symbol": symbol,
             "price": row.price,
             "volume": row.volume,
-            "timestamp": row.timestamp,
+            "date": row.date,
             "created_at": row.created_at,
             "name_en": null // 数据库无公司名，返回null
         }))
@@ -302,15 +302,20 @@ async fn get_latest_price(
             // 数据库没有，实时查Yahoo
             match fetch_price_from_yahoo(&symbol).await {
                 Ok((price, volume, name_en)) => {
+                    let today = chrono::Utc::now().date_naive();
                     let now = chrono::Utc::now().naive_utc();
-                    // 写入数据库
+                    // 写入数据库 - 使用当前价格作为所有OHLC值
                     let _ = sqlx::query!(
                         r#"
-                        INSERT INTO price_history (symbol, price, volume, timestamp)
-                        VALUES (?, ?, ?, ?)
+                        INSERT OR REPLACE INTO price_history (symbol, date, open_price, high_price, low_price, close_price, volume, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         "#,
                         symbol,
-                        price,
+                        today,
+                        price, // open_price
+                        price, // high_price  
+                        price, // low_price
+                        price, // close_price
                         volume,
                         now,
                     )
@@ -320,7 +325,7 @@ async fn get_latest_price(
                         "symbol": symbol,
                         "price": price,
                         "volume": volume,
-                        "timestamp": now,
+                        "date": today,
                         "created_at": now,
                         "name_en": name_en
                     }))

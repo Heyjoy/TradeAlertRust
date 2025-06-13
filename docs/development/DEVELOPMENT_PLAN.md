@@ -18,7 +18,7 @@
 - **行情数据源**: Yahoo Finance API
 - **测试工具**: 多个独立测试二进制文件
 
-## 当前状态 (2025-06-09)
+## 当前状态 (2025-06-14)
 
 ### ✅ 已完成功能
 
@@ -105,6 +105,31 @@
 - [x] 环境变量配置
 - [x] 数据持久化
 
+#### 12. 市场异动监控系统基础架构 (2025-06-14)
+- [x] 数据库迁移系统完善
+  - [x] 修复应用代码与数据库表结构不匹配问题
+  - [x] 创建市场异动监控相关数据表
+    - [x] price_history 表 - 支持OHLC数据和技术分析
+    - [x] news_events 表 - 新闻事件数据存储
+    - [x] technical_signals 表 - 技术指标信号
+    - [x] market_anomalies 表 - 市场异动记录
+  - [x] SQLite语法兼容性优化
+  - [x] 数据库迁移工具自动化
+
+#### 13. 开发工具和项目结构优化 (2025-06-14)
+- [x] 项目文件结构重新整理
+  - [x] 文档分类：development/ deployment/ guides/
+  - [x] 脚本分类：development/ deployment/ testing/
+  - [x] 根目录整洁化
+- [x] 开发工具脚本完善
+  - [x] scripts/development/new_migration.ps1 - 一键创建迁移文件
+  - [x] scripts/development/dev_migrate.ps1 - 运行数据库迁移
+  - [x] scripts/development/dev_start.ps1 - 开发环境一键启动
+- [x] AI协作优化
+  - [x] 创建 AI_CONTEXT.md - AI助手快速上手指南
+  - [x] 完善项目结构文档
+  - [x] 数据库迁移指南更新
+
 ### 🚀 下一阶段开发计划
 
 #### 第一优先级：用户反馈迭代
@@ -130,7 +155,12 @@
   - [ ] Docker部署文档
 
 #### 第三优先级：市场异动监控系统
-- [ ] 价格异动检测
+- [x] 数据库基础架构 (2025-06-14完成)
+  - [x] price_history 表设计和实现
+  - [x] market_anomalies 表设计和实现
+  - [x] technical_signals 表设计和实现
+  - [x] news_events 表设计和实现
+- [ ] 价格异动检测算法实现
   - [ ] 暴涨暴跌检测（±5%）
   - [ ] 成交量异常检测（3倍平均量）
   - [ ] 技术位突破检测
@@ -175,57 +205,63 @@
 
 ### 数据库扩展计划
 ```sql
--- 价格历史表（计划中）
+-- 价格历史表（✅ 2025-06-14 已实现）
 CREATE TABLE price_history (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
     date DATE NOT NULL,
-    open_price REAL,
-    high_price REAL,
-    low_price REAL,
-    close_price REAL,
-    volume INTEGER,
-    daily_change_pct REAL,
+    open_price REAL NOT NULL,
+    high_price REAL NOT NULL,
+    low_price REAL NOT NULL,
+    close_price REAL NOT NULL,
+    volume INTEGER NOT NULL,
+    daily_change_percent REAL,
     volume_ratio REAL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 新闻事件表（计划中）
+-- 新闻事件表（✅ 2025-06-14 已实现）
 CREATE TABLE news_events (
-    id INTEGER PRIMARY KEY,
-    symbol TEXT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
     title TEXT NOT NULL,
     content TEXT,
-    source TEXT,
+    source TEXT NOT NULL,
     sentiment TEXT,
-    event_type TEXT,
-    published_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    event_type TEXT NOT NULL,
+    published_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 技术指标表（计划中）
+-- 技术指标表（✅ 2025-06-14 已实现）
 CREATE TABLE technical_signals (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
-    indicator_type TEXT,
-    signal_value REAL,
+    indicator_type TEXT NOT NULL,
+    signal_value REAL NOT NULL,
     signal_strength INTEGER,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 异动记录表（计划中）
+-- 异动记录表（✅ 2025-06-14 已实现）
 CREATE TABLE market_anomalies (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
-    anomaly_type TEXT,
-    current_price REAL,
-    change_percent REAL,
-    volume_ratio REAL,
+    anomaly_type TEXT NOT NULL,
+    current_price REAL NOT NULL,
+    change_percent REAL NOT NULL,
+    volume_ratio REAL NOT NULL,
     description TEXT,
-    severity TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    severity INTEGER,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 相关索引（✅ 2025-06-14 已实现）
+CREATE INDEX idx_price_history_symbol_date ON price_history(symbol, date);
+CREATE INDEX idx_news_events_symbol_published ON news_events(symbol, published_at);
+CREATE INDEX idx_technical_signals_symbol_type ON technical_signals(symbol, indicator_type);
+CREATE INDEX idx_market_anomalies_symbol_type ON market_anomalies(symbol, anomaly_type);
 ```
 
 ## 开发环境和工具
@@ -279,7 +315,21 @@ askama = "0.12"        # 模板引擎
 
 ---
 
-**最后更新**: 2025-06-09 16:30
+**最后更新**: 2025-06-14 15:00
 **更新人**: AI Assistant  
-**下次review**: 基于用户反馈收集进度
-**当前焦点**: 用户反馈收集 > 产品化增强 
+**下次review**: 基于市场异动监控算法开发进度
+**当前焦点**: 市场异动监控系统开发 > 产品化增强
+
+## 2025-06-14 重要进展总结
+
+### 🎯 今日完成的关键任务
+1. **数据库迁移系统完善** - 修复了应用代码与数据库表结构不匹配的问题
+2. **市场异动监控基础架构** - 完成了所有相关数据表的设计和实现
+3. **项目结构优化** - 重新整理了文档和脚本的目录结构
+4. **开发工具完善** - 创建了自动化的数据库迁移和开发启动脚本
+5. **AI协作优化** - 建立了AI助手快速上手的标准化流程
+
+### 🚀 下一步重点
+- 开始实现价格异动检测算法
+- 基于新的数据表结构开发技术指标系统
+- 完善市场异动监控的核心逻辑 

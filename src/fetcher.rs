@@ -300,10 +300,10 @@ impl PriceService {
         // 获取上次价格作为基准
         let last_price = sqlx::query!(
             r#"
-            SELECT price
+            SELECT close_price as price
             FROM price_history
             WHERE symbol = ?
-            ORDER BY timestamp DESC
+            ORDER BY date DESC
             LIMIT 1
             "#,
             symbol
@@ -334,16 +334,22 @@ impl PriceService {
             price.price
         );
 
-        // 保存价格历史
+        // 保存价格历史 - 使用当前价格作为所有OHLC值
+        let today = price.timestamp.date_naive();
+        let created_at = price.timestamp.naive_utc();
         sqlx::query!(
             r#"
-            INSERT INTO price_history (symbol, price, volume, timestamp)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO price_history (symbol, date, open_price, high_price, low_price, close_price, volume, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             price.symbol,
-            price.price,
+            today,
+            price.price, // open_price
+            price.price, // high_price
+            price.price, // low_price
+            price.price, // close_price
             price.volume,
-            price.timestamp,
+            created_at,
         )
         .execute(&self.db)
         .await?;

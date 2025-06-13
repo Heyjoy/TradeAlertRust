@@ -10,6 +10,24 @@ async fn main() -> Result<()> {
     // 读取数据库 URL
     let database_url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:trade_alert.db".to_string());
+    
+    // 从 URL 中提取数据库文件路径并确保目录和文件存在
+    if let Some(db_path_str) = database_url.strip_prefix("sqlite:") {
+        let db_path = Path::new(db_path_str);
+        // 确保父目录存在
+        if let Some(parent_dir) = db_path.parent() {
+            if !parent_dir.exists() {
+                info!("创建数据库目录: {}", parent_dir.display());
+                std::fs::create_dir_all(parent_dir)?;
+            }
+        }
+        // 如果数据库文件不存在，先创建一个空文件
+        if !db_path.exists() {
+            info!("创建数据库文件: {}", db_path.display());
+            std::fs::File::create(db_path)?;
+        }
+    }
+    
     let pool = SqlitePool::connect(&database_url).await?;
 
     // 读取 migrations 目录下所有 .sql 文件
