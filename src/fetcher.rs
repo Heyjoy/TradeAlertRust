@@ -323,12 +323,16 @@ impl PriceService {
             price: new_price,
             volume: (rand::random::<i64>() % 10000) + 1000, // 1000-11000之间的随机成交量
             timestamp: Utc::now(),
-            name_en: None,
+            name_en: Some(format!("{} Corporation", symbol)), // 为模拟数据提供一个通用公司名
         })
     }
 
     async fn save_price(&self, price: &StockPrice) -> Result<()> {
-        info!("Saving price for {}: ${:.2}", price.symbol, price.price);
+        info!("Saving price for {} ({}): ${:.2}", 
+            price.symbol, 
+            price.name_en.as_deref().unwrap_or("Unknown"), 
+            price.price
+        );
 
         // 保存价格历史
         sqlx::query!(

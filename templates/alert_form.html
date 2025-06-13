@@ -202,8 +202,34 @@
 <script>
 $(document).ready(function() {
     let validationTimeout;
+    let isComposing = false;  // 添加输入法组合状态标记
+    
+    // 处理输入法组合开始
+    $('#symbol').on('compositionstart', function() {
+        isComposing = true;
+    });
+    
+    // 处理输入法组合结束
+    $('#symbol').on('compositionend', function() {
+        isComposing = false;
+        // 组合结束后触发一次验证
+        const symbol = $(this).val().trim();
+        if (symbol.length > 0) {
+            if (validationTimeout) {
+                clearTimeout(validationTimeout);
+            }
+            validationTimeout = setTimeout(() => {
+                validateStockSymbol(symbol);
+            }, 500);
+        }
+    });
     
     $('#symbol').on('input', function() {
+        // 如果是输入法组合状态，不处理
+        if (isComposing) {
+            return;
+        }
+        
         this.value = this.value.toUpperCase();
         
         // 清除之前的定时器

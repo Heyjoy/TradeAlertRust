@@ -1,7 +1,12 @@
 # 交易预警系统开发计划
 
 ## 项目概述
-开发一个实时交易预警系统，用于监控股票价格并在达到预设条件时发出提醒。
+开发一个智能市场异动监控系统，帮助投资者捕捉人工监控容易错过的市场机会和风险。
+
+## 产品定位
+**核心价值**：帮助投资者捕捉人工监控容易错过的市场机会和风险
+**产品边界**：智能监控 + 及时提醒，用户自主决策和操作
+**目标用户**：有投资经验但监控时间有限的个人投资者
 
 ## 技术栈
 - **后端**: Rust + Axum
@@ -103,8 +108,9 @@
 ### 🚀 下一阶段开发计划
 
 #### 第一优先级：用户反馈迭代
-- [ ] 收集朋友使用反馈
-  - [ ] 界面易用性评估
+- [x] 收集朋友使用反馈
+  - [x] 界面易用性评估
+    - [x] 修复移动端中文输入法重复字符问题
   - [ ] 功能完整性验证  
   - [ ] 性能和稳定性测试
   - [ ] 新功能需求收集
@@ -118,42 +124,109 @@
   - [ ] Docker镜像优化
 
 - [ ] 用户体验细节
-  - [ ] 股票代码智能提示
+  - [x] 股票代码智能提示（已完成）
   - [ ] 价格趋势简单图表
   - [ ] 操作成功/失败Toast提示
   - [ ] Docker部署文档
 
-#### 第三优先级：高级功能
-- [ ] 用户系统 (如果有需求)
-  - [ ] 简单注册/登录
-  - [ ] 个人预警管理
-  - [ ] 多邮箱管理
-  - [ ] 用户数据隔离
+#### 第三优先级：市场异动监控系统
+- [ ] 价格异动检测
+  - [ ] 暴涨暴跌检测（±5%）
+  - [ ] 成交量异常检测（3倍平均量）
+  - [ ] 技术位突破检测
+  - [ ] 盘前盘后异动监控
 
-- [ ] 实时功能增强
-  - [ ] WebSocket 实时价格推送
-  - [ ] 浏览器通知
-  - [ ] 预警触发实时显示
+- [ ] 技术指标系统
+  - [ ] 移动平均穿越检测
+  - [ ] RSI极值信号
+  - [ ] MACD金叉死叉
+  - [ ] 信号评级机制
 
-- [ ] 预警功能扩展
-  - [ ] 百分比变化预警
-  - [ ] 价格区间预警
-  - [ ] 技术指标预警
+- [ ] 新闻事件监控
+  - [ ] 个股重大新闻监控
+  - [ ] 行业政策变化监控
+  - [ ] 宏观经济事件监控
+  - [ ] 简单情感分析
 
-#### 第四优先级：生产部署
-- [ ] 云部署方案
-  - [ ] Railway/Fly.io 部署
-  - [ ] 自定义域名
-  - [ ] SSL证书配置
-  - [ ] CI/CD 流水线
-  - [ ] Docker镜像发布
+#### 第四优先级：智能过滤和个性化
+- [ ] 噪音过滤机制
+  - [ ] 重复提醒过滤
+  - [ ] 市场环境过滤
+  - [ ] 用户偏好配置
 
-- [ ] 监控和运维
-  - [ ] 系统监控面板
-  - [ ] 错误报警系统
-  - [ ] 数据备份策略
-  - [ ] 性能优化
-  - [ ] Docker日志收集
+- [ ] 提醒优先级系统
+  - [ ] 多级优先级分类
+  - [ ] 智能提醒调度
+  - [ ] 用户自定义规则
+
+#### 第五优先级：高级功能
+- [ ] 事件日历
+  - [ ] Fed会议日程
+  - [ ] 财报发布日期
+  - [ ] 经济数据发布
+  - [ ] 期权到期日
+
+- [ ] 市场情绪指标
+  - [ ] VIX恐慌指数监控
+  - [ ] 资金流向分析
+  - [ ] 板块轮动信号
+
+## 技术实现方案
+
+### 数据库扩展计划
+```sql
+-- 价格历史表（计划中）
+CREATE TABLE price_history (
+    id INTEGER PRIMARY KEY,
+    symbol TEXT NOT NULL,
+    date DATE NOT NULL,
+    open_price REAL,
+    high_price REAL,
+    low_price REAL,
+    close_price REAL,
+    volume INTEGER,
+    daily_change_pct REAL,
+    volume_ratio REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 新闻事件表（计划中）
+CREATE TABLE news_events (
+    id INTEGER PRIMARY KEY,
+    symbol TEXT,
+    title TEXT NOT NULL,
+    content TEXT,
+    source TEXT,
+    sentiment TEXT,
+    event_type TEXT,
+    published_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 技术指标表（计划中）
+CREATE TABLE technical_signals (
+    id INTEGER PRIMARY KEY,
+    symbol TEXT NOT NULL,
+    indicator_type TEXT,
+    signal_value REAL,
+    signal_strength INTEGER,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 异动记录表（计划中）
+CREATE TABLE market_anomalies (
+    id INTEGER PRIMARY KEY,
+    symbol TEXT NOT NULL,
+    anomaly_type TEXT,
+    current_price REAL,
+    change_percent REAL,
+    volume_ratio REAL,
+    description TEXT,
+    severity TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
 
 ## 开发环境和工具
 
@@ -187,10 +260,26 @@ askama = "0.12"        # 模板引擎
 - 价格数据延迟：< 1分钟
 - 预警触发延迟：< 30秒
 - 系统可用性：99.9%
+- 异动提醒及时性：5分钟内
+- 提醒准确率：80%以上
+
+## 成功指标
+
+### 用户价值验证
+- 每周能捕捉到2-3次有价值的市场异动
+- 提醒及时性：异动发生后5分钟内通知
+- 准确率：80%以上的提醒确实值得关注
+- 用户满意度：持续使用并推荐给朋友
+
+### 技术性能指标
+- 数据延迟：<1分钟
+- 系统可用性：99%+
+- 提醒发送成功率：95%+
+- API响应时间：<200ms
 
 ---
 
-**最后更新**: 2025-06-09 10:30
+**最后更新**: 2025-06-09 16:30
 **更新人**: AI Assistant  
-**下次review**: 基于Docker部署反馈
-**当前焦点**: 容器化部署 > 用户反馈收集 
+**下次review**: 基于用户反馈收集进度
+**当前焦点**: 用户反馈收集 > 产品化增强 
