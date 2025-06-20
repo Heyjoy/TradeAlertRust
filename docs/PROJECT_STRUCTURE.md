@@ -14,6 +14,18 @@ TradeAlertRust/
 │   └── templates.rs            # 模板渲染
 │
 ├── 📂 docs/                    # 文档目录
+│   ├── 📂 Requirement/         # 需求管理文档 ⭐ *v2.0*
+│   │   ├── README.md                    # 需求管理总览
+│   │   ├── PRD_MASTER.md                # 主PRD文档 (v2.0)
+│   │   ├── REQUIREMENT_TRACEABILITY.md  # 需求追溯性管理
+│   │   ├── MULTI_MARKET_REQUIREMENTS.md # 多市场支持需求
+│   │   ├── MOBILE_DESIGN_REQUIREMENTS.md # 移动端设计需求
+│   │   └── 尾盘牵牛-战法说明.pptx       # 交易策略文档
+│   │
+│   ├── 📂 archive/             # 归档文档 📁 *新增*
+│   │   ├── README.md                    # 归档说明
+│   │   └── PRD_v1.0.md                  # v1.0产品需求文档 (已归档)
+│   │
 │   ├── 📂 development/         # 开发相关文档
 │   │   ├── DATABASE_MIGRATION_GUIDE.md  # 数据库迁移指南
 │   │   ├── DEVELOPMENT_PLAN.md          # 开发计划
@@ -27,7 +39,6 @@ TradeAlertRust/
 │   │
 │   ├── 📂 guides/              # 使用指南
 │   │   ├── QUICK_EMAIL_SETUP.md         # 邮件设置指南
-│   │   ├── PRD.md                       # 产品需求文档
 │   │   ├── USEFUL_SCRIPTS.md            # 实用脚本说明
 │   │   ├── friend_test_guide.md         # 朋友测试指南
 │   │   └── setup_example.md             # 设置示例
@@ -78,9 +89,11 @@ TradeAlertRust/
 
 | 目录 | 用途 | 包含文件 |
 |------|------|----------|
+| `Requirement/` | 需求管理文档 | PRD主文档、需求追溯管理、技术设计需求 |
+| `archive/` | 归档文档 | 已过时或被替代的历史文档 |
 | `development/` | 开发相关文档 | 数据库迁移指南、开发计划、用户反馈 |
 | `deployment/` | 部署相关文档 | 部署指南、安全配置、Railway相关 |
-| `guides/` | 使用指南 | 邮件设置、产品文档、测试指南 |
+| `guides/` | 使用指南 | 邮件设置、脚本说明、测试指南 |
 
 ### 🛠️ 脚本分类 (`scripts/`)
 
@@ -129,6 +142,17 @@ TradeAlertRust/
 ```
 
 ## 📋 文档索引
+
+### 📋 需求管理
+- [需求管理总览](Requirement/README.md) - 需求管理流程和文档组织
+- [主PRD文档](Requirement/PRD_MASTER.md) - 产品需求主文档 (v2.0)
+- [需求追溯性管理](Requirement/REQUIREMENT_TRACEABILITY.md) - 需求一致性和追溯性
+- [多市场支持需求](Requirement/MULTI_MARKET_REQUIREMENTS.md) - 美股、A股、加密货币技术需求
+- [移动端设计需求](Requirement/MOBILE_DESIGN_REQUIREMENTS.md) - 移动优先的界面设计需求
+
+### 📁 归档文档
+- [归档说明](archive/README.md) - 归档文档管理说明
+- [v1.0 PRD文档](archive/PRD_v1.0.md) - 历史版本产品需求文档
 
 ### 🔧 开发相关
 - [数据库迁移指南](development/DATABASE_MIGRATION_GUIDE.md) - 数据库迁移的完整流程
