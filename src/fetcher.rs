@@ -227,12 +227,114 @@ impl PriceService {
     }
 
     async fn fetch_price(&self, symbol: &str) -> Result<StockPrice> {
+        // 根据股票代码判断市场类型
+        if self.is_china_stock(symbol) {
+            self.fetch_china_stock_price(symbol).await
+        } else {
+            self.fetch_us_stock_price(symbol).await
+        }
+    }
+
+    // 判断是否为A股
+    fn is_china_stock(&self, symbol: &str) -> bool {
+        symbol.ends_with(".SZ") || symbol.ends_with(".SS")
+    }
+
+    // 获取A股价格 - 使用新浪财经API
+    async fn fetch_china_stock_price(&self, symbol: &str) -> Result<StockPrice> {
+        // 转换股票代码格式
+        let sina_symbol = self.convert_to_sina_format(symbol);
+        let url = format!("https://hq.sinajs.cn/list={}", sina_symbol);
+
+        info!("Fetching A-share price for {} from Sina Finance", symbol);
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Referer", "https://finance.sina.com.cn")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
+            .timeout(Duration::from_secs(5))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            // 如果新浪API失败，尝试腾讯API作为备用
+            return self.fetch_china_stock_price_tencent(symbol).await;
+        }
+
+        let text = response.text().await?;
+        if let Some(stock_price) = self.parse_sina_response(&text, symbol)? {
+            // 更新缓存
+            self.set_cached_price(
+                symbol.to_string(),
+                PriceCache {
+                    price: stock_price.price,
+                    volume: stock_price.volume,
+                    timestamp: stock_price.timestamp,
+                },
+            )
+            .await;
+
+            Ok(stock_price)
+        } else {
+            // 新浪API解析失败，尝试腾讯API
+            self.fetch_china_stock_price_tencent(symbol).await
+        }
+    }
+
+    // 腾讯财经API作为A股数据的备用源
+    async fn fetch_china_stock_price_tencent(&self, symbol: &str) -> Result<StockPrice> {
+        let tencent_symbol = self.convert_to_tencent_format(symbol);
+        let url = format!("https://qt.gtimg.cn/q={}", tencent_symbol);
+
+        info!("Fetching A-share price for {} from Tencent Finance (fallback)", symbol);
+
+        let response = self
+            .client
+            .get(&url)
+            .header("Referer", "https://stockapp.finance.qq.com")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            )
+            .timeout(Duration::from_secs(5))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error: {}", response.status()));
+        }
+
+        let text = response.text().await?;
+        if let Some(stock_price) = self.parse_tencent_response(&text, symbol)? {
+            // 更新缓存
+            self.set_cached_price(
+                symbol.to_string(),
+                PriceCache {
+                    price: stock_price.price,
+                    volume: stock_price.volume,
+                    timestamp: stock_price.timestamp,
+                },
+            )
+            .await;
+
+            Ok(stock_price)
+        } else {
+            Err(anyhow::anyhow!("Failed to parse Tencent response for {}", symbol))
+        }
+    }
+
+    // 获取美股价格 - 保持原有的Yahoo Finance API
+    async fn fetch_us_stock_price(&self, symbol: &str) -> Result<StockPrice> {
         let url = format!(
             "https://query1.finance.yahoo.com/v8/finance/chart/{}",
             symbol
         );
 
-        info!("Fetching price for {} from Yahoo Finance", symbol);
+        info!("Fetching US stock price for {} from Yahoo Finance", symbol);
 
         let response = self
             .client
@@ -293,6 +395,85 @@ impl PriceService {
         .await;
 
         Ok(stock_price)
+    }
+
+    // A股股票代码格式转换
+    fn convert_to_sina_format(&self, symbol: &str) -> String {
+        if symbol.ends_with(".SZ") {
+            format!("sz{}", &symbol[..6])
+        } else if symbol.ends_with(".SS") {
+            format!("sh{}", &symbol[..6])
+        } else {
+            symbol.to_string()
+        }
+    }
+
+    fn convert_to_tencent_format(&self, symbol: &str) -> String {
+        if symbol.ends_with(".SZ") {
+            format!("sz{}", &symbol[..6])
+        } else if symbol.ends_with(".SS") {
+            format!("sh{}", &symbol[..6])
+        } else {
+            symbol.to_string()
+        }
+    }
+
+    // 解析新浪财经API响应
+    fn parse_sina_response(&self, text: &str, symbol: &str) -> Result<Option<StockPrice>> {
+        // 新浪API返回格式: var hq_str_sz000001="平安银行,27.55,27.25,26.91,27.60,26.20,26.91,26.92,22114263,589824680,..."
+        if let Some(start) = text.find('"') {
+            if let Some(end) = text.rfind('"') {
+                let data_str = &text[start + 1..end];
+                let parts: Vec<&str> = data_str.split(',').collect();
+                
+                if parts.len() >= 32 {
+                    let name = parts[0].to_string();
+                    let current_price: f64 = parts[3].parse()
+                        .map_err(|e| anyhow::anyhow!("Failed to parse current price: {}", e))?;
+                    let _prev_close: f64 = parts[2].parse()
+                        .map_err(|e| anyhow::anyhow!("Failed to parse previous close: {}", e))?;
+                    let volume: i64 = parts[8].parse()
+                        .map_err(|e| anyhow::anyhow!("Failed to parse volume: {}", e))?;
+                    
+                    return Ok(Some(StockPrice {
+                        symbol: symbol.to_string(),
+                        price: current_price,
+                        volume,
+                        timestamp: Utc::now(),
+                        name_en: Some(name),
+                    }));
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    // 解析腾讯财经API响应
+    fn parse_tencent_response(&self, text: &str, symbol: &str) -> Result<Option<StockPrice>> {
+        // 腾讯API返回格式: v_sz000001="51~平安银行~000001~11.84~11.70~11.84~..."
+        if let Some(start) = text.find('"') {
+            if let Some(end) = text.rfind('"') {
+                let data_str = &text[start + 1..end];
+                let parts: Vec<&str> = data_str.split('~').collect();
+                
+                if parts.len() >= 50 {
+                    let name = parts[1].to_string();
+                    let current_price: f64 = parts[3].parse()
+                        .map_err(|e| anyhow::anyhow!("Failed to parse current price: {}", e))?;
+                    let volume: i64 = parts[6].parse::<f64>()
+                        .map_err(|e| anyhow::anyhow!("Failed to parse volume: {}", e))? as i64;
+                    
+                    return Ok(Some(StockPrice {
+                        symbol: symbol.to_string(),
+                        price: current_price,
+                        volume,
+                        timestamp: Utc::now(),
+                        name_en: Some(name),
+                    }));
+                }
+            }
+        }
+        Ok(None)
     }
 
     // 后备方案：使用模拟数据
