@@ -74,3 +74,38 @@ email_test_output.txt
 # Keep example files for reference
 !*.example
 !*_example.* 
+
+# ======================================
+# 📋 需求文档管理策略
+# ======================================
+# 需求文档本地Git管理，但不上传到GitHub
+# 原因：包含产品策略、商业规划等敏感信息
+
+# 忽略整个需求文档目录
+/docs/Requirement/
+
+# 但保留重要的示例和模板文件供团队参考
+!/docs/Requirement/README.md
+!/docs/Requirement/*_TEMPLATE.md
+!/docs/Requirement/*_EXAMPLE.md
+
+# 忽略需求管理脚本的输出文件
+/scripts/requirement_check_output.txt
+/scripts/compliance_report.html
+
+# ======================================
+# 📚 其他敏感文档管理
+# ======================================
+# 如果后续有其他敏感文档，可以在这里添加
+
+# 商业计划和策略文档
+/docs/business/
+/docs/strategy/
+
+# 用户数据分析报告
+/docs/analytics/
+/docs/user_data/
+
+# 内部会议记录
+/docs/meetings/
+/docs/internal/ 
