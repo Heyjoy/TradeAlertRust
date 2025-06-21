@@ -60,13 +60,17 @@ pub struct Config {
 impl Config {
     pub fn load() -> anyhow::Result<Self> {
         let config = config::Config::builder()
-            // 1. 首先加载默认配置模板
-            .add_source(config::File::with_name("config.toml.example").required(false))
+            // 1. 首先加载默认配置模板（新位置）
+            .add_source(config::File::with_name("config/config.toml.example").required(false))
             // 2. 然后加载本地配置（如果存在）
-            .add_source(config::File::with_name("config.local").required(false))
+            .add_source(config::File::with_name("config/config.local").required(false))
             // 3. 最后加载主配置文件（如果存在）
+            .add_source(config::File::with_name("config/config").required(false))
+            // 4. 为了向后兼容，也检查根目录的配置文件
+            .add_source(config::File::with_name("config.toml.example").required(false))
+            .add_source(config::File::with_name("config.local").required(false))
             .add_source(config::File::with_name("config").required(false))
-            // 4. 环境变量具有最高优先级 - 使用双下划线作为分隔符避免字段名冲突
+            // 5. 环境变量具有最高优先级 - 使用双下划线作为分隔符避免字段名冲突
             .add_source(config::Environment::with_prefix("TRADE_ALERT").separator("__"))
             .build()?;
 

@@ -290,7 +290,10 @@ impl PriceService {
         let tencent_symbol = self.convert_to_tencent_format(symbol);
         let url = format!("https://qt.gtimg.cn/q={}", tencent_symbol);
 
-        info!("Fetching A-share price for {} from Tencent Finance (fallback)", symbol);
+        info!(
+            "Fetching A-share price for {} from Tencent Finance (fallback)",
+            symbol
+        );
 
         let response = self
             .client
@@ -323,7 +326,10 @@ impl PriceService {
 
             Ok(stock_price)
         } else {
-            Err(anyhow::anyhow!("Failed to parse Tencent response for {}", symbol))
+            Err(anyhow::anyhow!(
+                "Failed to parse Tencent response for {}",
+                symbol
+            ))
         }
     }
 
@@ -425,16 +431,19 @@ impl PriceService {
             if let Some(end) = text.rfind('"') {
                 let data_str = &text[start + 1..end];
                 let parts: Vec<&str> = data_str.split(',').collect();
-                
+
                 if parts.len() >= 32 {
                     let name = parts[0].to_string();
-                    let current_price: f64 = parts[3].parse()
+                    let current_price: f64 = parts[3]
+                        .parse()
                         .map_err(|e| anyhow::anyhow!("Failed to parse current price: {}", e))?;
-                    let _prev_close: f64 = parts[2].parse()
+                    let _prev_close: f64 = parts[2]
+                        .parse()
                         .map_err(|e| anyhow::anyhow!("Failed to parse previous close: {}", e))?;
-                    let volume: i64 = parts[8].parse()
+                    let volume: i64 = parts[8]
+                        .parse()
                         .map_err(|e| anyhow::anyhow!("Failed to parse volume: {}", e))?;
-                    
+
                     return Ok(Some(StockPrice {
                         symbol: symbol.to_string(),
                         price: current_price,
@@ -455,14 +464,17 @@ impl PriceService {
             if let Some(end) = text.rfind('"') {
                 let data_str = &text[start + 1..end];
                 let parts: Vec<&str> = data_str.split('~').collect();
-                
+
                 if parts.len() >= 50 {
                     let name = parts[1].to_string();
-                    let current_price: f64 = parts[3].parse()
+                    let current_price: f64 = parts[3]
+                        .parse()
                         .map_err(|e| anyhow::anyhow!("Failed to parse current price: {}", e))?;
-                    let volume: i64 = parts[6].parse::<f64>()
-                        .map_err(|e| anyhow::anyhow!("Failed to parse volume: {}", e))? as i64;
-                    
+                    let volume: i64 = parts[6]
+                        .parse::<f64>()
+                        .map_err(|e| anyhow::anyhow!("Failed to parse volume: {}", e))?
+                        as i64;
+
                     return Ok(Some(StockPrice {
                         symbol: symbol.to_string(),
                         price: current_price,
@@ -509,9 +521,10 @@ impl PriceService {
     }
 
     async fn save_price(&self, price: &StockPrice) -> Result<()> {
-        info!("Saving price for {} ({}): ${:.2}", 
-            price.symbol, 
-            price.name_en.as_deref().unwrap_or("Unknown"), 
+        info!(
+            "Saving price for {} ({}): ${:.2}",
+            price.symbol,
+            price.name_en.as_deref().unwrap_or("Unknown"),
             price.price
         );
 

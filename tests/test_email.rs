@@ -1,13 +1,20 @@
-use trade_alert_rust::{config::Config, email::EmailNotifier};
+use config;
+use trade_alert_rust::{config::Config, services::EmailNotifier};
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_email_integration() -> anyhow::Result<()> {
     // 初始化日志
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt().with_test_writer().try_init().ok(); // 忽略重复初始化错误
 
-    // 加载配置
+    // 加载测试配置
     dotenvy::dotenv().ok();
-    let config = Config::load()?;
+
+    // 使用测试配置文件
+    let config = config::Config::builder()
+        .add_source(config::File::with_name("tests/test_config"))
+        .build()?;
+
+    let config: Config = config.try_deserialize()?;
 
     println!("邮件配置:");
     println!("SMTP服务器: {}", config.email.smtp_server);

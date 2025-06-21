@@ -1,15 +1,14 @@
 use anyhow::Result;
 use reqwest::Client;
 use std::time::Duration;
-use tokio;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+#[tokio::test]
+async fn test_a_share_simple() -> Result<()> {
     println!("🧪 A股数据获取功能测试");
     println!("{}", "=".repeat(50));
-    
+
     let client = Client::new();
-    
+
     // 测试股票列表
     let test_symbols = vec![
         ("000001.SZ", "平安银行"),
@@ -17,21 +16,31 @@ async fn main() -> Result<()> {
         ("600519.SS", "贵州茅台"),
         ("600036.SS", "招商银行"),
     ];
-    
+
     for (symbol, name) in test_symbols {
         println!("\n📊 测试 {} ({})", name, symbol);
-        
+
         match fetch_china_stock_price(&client, symbol).await {
             Ok((price, volume, stock_name)) => {
-                println!("  ✅ 成功: 价格 ¥{:.2}, 成交量 {}, 名称: {}", 
-                    price, volume, stock_name);
+                println!(
+                    "  ✅ 成功: 价格 ¥{:.2}, 成交量 {}, 名称: {}",
+                    price, volume, stock_name
+                );
+                // 添加断言验证数据合理性
+                assert!(price > 0.0, "价格应该大于0");
+                assert!(volume >= 0, "成交量应该大于等于0");
+                assert!(!stock_name.is_empty(), "股票名称不应为空");
             }
             Err(e) => {
                 println!("  ❌ 失败: {}", e);
+                // 网络测试可能失败，不强制要求成功
             }
         }
+
+        // 间隔一下避免请求过快
+        tokio::time::sleep(Duration::from_millis(100)).await;
     }
-    
+
     println!("\n🎯 测试完成");
     Ok(())
 }
@@ -79,18 +88,20 @@ fn parse_sina_response(text: &str, symbol: &str) -> Result<(f64, i64, String)> {
         if let Some(end) = text.rfind('"') {
             let data_str = &text[start + 1..end];
             let parts: Vec<&str> = data_str.split(',').collect();
-            
+
             if parts.len() >= 32 {
                 let name = parts[0].to_string();
-                let current_price: f64 = parts[3].parse()
+                let current_price: f64 = parts[3]
+                    .parse()
                     .map_err(|e| anyhow::anyhow!("价格解析失败: {}", e))?;
-                let volume: i64 = parts[8].parse()
+                let volume: i64 = parts[8]
+                    .parse()
                     .map_err(|e| anyhow::anyhow!("成交量解析失败: {}", e))?;
-                
+
                 return Ok((current_price, volume, name));
             }
         }
     }
-    
+
     Err(anyhow::anyhow!("无法解析 {} 的数据", symbol))
-} 
+}

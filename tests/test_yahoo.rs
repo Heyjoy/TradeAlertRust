@@ -36,7 +36,7 @@ struct YahooError {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Testing Yahoo Finance API ===");
-    
+
     let client = Client::builder()
         .timeout(Duration::from_secs(30))
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
@@ -46,17 +46,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for symbol in symbols {
         println!("\nTesting symbol: {}", symbol);
-        
-        let url = format!("https://query1.finance.yahoo.com/v8/finance/chart/{}", symbol);
-        
+
+        let url = format!(
+            "https://query1.finance.yahoo.com/v8/finance/chart/{}",
+            symbol
+        );
+
         match client.get(&url).send().await {
             Ok(response) => {
                 println!("  HTTP Status: {}", response.status());
-                
+
                 match response.json::<YahooQuoteResponse>().await {
                     Ok(data) => {
                         if let Some(error) = data.chart.error {
-                            println!("  ❌ Yahoo API Error: {} - {}", error.code, error.description);
+                            println!(
+                                "  ❌ Yahoo API Error: {} - {}",
+                                error.code, error.description
+                            );
                         } else if data.chart.result.is_empty() {
                             println!("  ❌ No results returned");
                         } else {
@@ -79,8 +85,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         match client.get(&url).send().await {
                             Ok(raw_response) => {
                                 if let Ok(text) = raw_response.text().await {
-                                    println!("     Raw response (first 200 chars): {}", 
-                                        text.chars().take(200).collect::<String>());
+                                    println!(
+                                        "     Raw response (first 200 chars): {}",
+                                        text.chars().take(200).collect::<String>()
+                                    );
                                 }
                             }
                             Err(_) => {}
@@ -96,4 +104,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n=== Test Complete ===");
     Ok(())
-} 
+}

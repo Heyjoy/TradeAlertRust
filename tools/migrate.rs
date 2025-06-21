@@ -10,7 +10,7 @@ async fn main() -> Result<()> {
     // 读取数据库 URL
     let database_url =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:trade_alert.db".to_string());
-    
+
     // 从 URL 中提取数据库文件路径并确保目录和文件存在
     if let Some(db_path_str) = database_url.strip_prefix("sqlite:") {
         let db_path = Path::new(db_path_str);
@@ -27,14 +27,14 @@ async fn main() -> Result<()> {
             std::fs::File::create(db_path)?;
         }
     }
-    
+
     let pool = SqlitePool::connect(&database_url).await?;
 
     // 读取 migrations 目录下所有 .sql 文件
     let migrations_dir = Path::new("migrations");
     let mut migration_files: Vec<_> = std::fs::read_dir(migrations_dir)?
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "sql"))
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "sql"))
         .collect();
     migration_files.sort_by_key(|entry| entry.path().to_path_buf());
 

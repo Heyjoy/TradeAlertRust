@@ -5,4 +5,4 @@ pub mod fetcher;
 
 pub use db::*;
 pub use email::*;
-pub use fetcher::*; 
+pub use fetcher::*;

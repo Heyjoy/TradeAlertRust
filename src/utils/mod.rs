@@ -1,2 +1,2 @@
 // Utility functions module
-// This module will contain shared utility functions 
+// This module will contain shared utility functions

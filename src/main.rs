@@ -29,7 +29,10 @@ struct AppState {
 async fn main() -> anyhow::Result<()> {
     // 加载.env文件（如果存在）- 必须在配置加载之前
     dotenvy::dotenv().ok();
-    println!("Loaded env vars: {:?}", std::env::vars().collect::<Vec<_>>());
+    println!(
+        "Loaded env vars: {:?}",
+        std::env::vars().collect::<Vec<_>>()
+    );
 
     // Load configuration
     let config = config::Config::load()?;
@@ -378,10 +381,16 @@ async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64, Optio
         description: String,
     }
     let client = reqwest::Client::new();
-    let url = format!("https://query1.finance.yahoo.com/v8/finance/chart/{}", symbol);
+    let url = format!(
+        "https://query1.finance.yahoo.com/v8/finance/chart/{}",
+        symbol
+    );
     let response = client
         .get(&url)
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        )
         .timeout(std::time::Duration::from_secs(10))
         .send()
         .await?;
@@ -390,7 +399,11 @@ async fn fetch_price_from_yahoo(symbol: &str) -> anyhow::Result<(f64, i64, Optio
     }
     let yahoo_response: YahooQuoteResponse = response.json().await?;
     if let Some(error) = yahoo_response.chart.error {
-        return Err(anyhow::anyhow!("Yahoo Finance error: {} - {}", error.code, error.description));
+        return Err(anyhow::anyhow!(
+            "Yahoo Finance error: {} - {}",
+            error.code,
+            error.description
+        ));
     }
     let result = yahoo_response
         .chart
