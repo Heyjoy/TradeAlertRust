@@ -1,0 +1,108 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Rust Development Rules
+
+## 🦀 Language Specific Guidelines
+
+### Memory Management
+- Prefer ownership over borrowing when possible
+- Use `Rc<RefCell<T>>` for shared mutable state in single-threaded contexts
+- Use `Arc<Mutex<T>>` or `Arc<RwLock<T>>` for shared state in multi-threaded contexts
+- Avoid `unsafe` code unless absolutely necessary and well-documented
+
+### Error Handling Patterns
+```rust
+// Preferred: Custom error types
+#[derive(Debug, thiserror::Error)]
+pub enum TradeError {
+    #[error("Network error: {0}")]
+    Network(#[from] reqwest::Error),
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("Invalid price: {price}")]
+    InvalidPrice { price: f64 },
+}
+
+// Use Result<T, E> for fallible operations
+pub fn calculate_profit(buy_price: f64, sell_price: f64) -> Result<f64, TradeError> {
+    if buy_price <= 0.0 || sell_price <= 0.0 {
+        return Err(TradeError::InvalidPrice { price: buy_price.min(sell_price) });
+    }
+    Ok(sell_price - buy_price)
+}
+```
+
+### Async Programming
+- Use `tokio::spawn` for CPU-intensive tasks
+- Use `tokio::time::sleep` instead of `std::thread::sleep`
+- Prefer `async fn` over `impl Future`
+- Use `tokio::select!` for concurrent operations
+
+### Testing Patterns
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio_test;
+
+    #[tokio::test]
+    async fn test_async_function() {
+        let result = async_function().await;
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sync_function() {
+        let result = sync_function();
+        assert_eq!(result, expected_value);
+    }
+}
+```
+
+### Performance Guidelines
+- Use `String` for owned strings, `&str` for borrowed strings
+- Prefer `Vec::with_capacity()` when size is known
+- Use `lazy_static` or `once_cell` for expensive static initialization
+- Profile with `cargo bench` before optimizing
+
+### Documentation Standards
+```rust
+/// Calculates the moving average for a given price series.
+/// 
+/// # Arguments
+/// 
+/// * `prices` - A slice of price values
+/// * `window` - The number of periods to include in the average
+/// 
+/// # Returns
+/// 
+/// Returns `Ok(Vec<f64>)` containing the moving averages, or `Err` if window is invalid.
+/// 
+/// # Examples
+/// 
+/// ```
+/// let prices = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+/// let ma = calculate_moving_average(&prices, 3)?;
+/// assert_eq!(ma.len(), 3);
+/// ```
+pub fn calculate_moving_average(prices: &[f64], window: usize) -> Result<Vec<f64>, TradeError> {
+    // Implementation here
+}
+```
+
+### Code Organization
+- Use modules to group related functionality
+- Keep functions small and focused
+- Use descriptive names for variables and functions
+- Implement `Display` and `Debug` for custom types
+
+### Dependencies Management
+- Pin versions in `Cargo.toml` for reproducible builds
+- Use `cargo audit` to check for security vulnerabilities
+- Prefer well-maintained crates with good documentation
+- Avoid unnecessary dependencies
+
+

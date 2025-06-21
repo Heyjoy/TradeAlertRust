@@ -1,0 +1,109 @@
+# TradeAlertRust AI Development Rules
+
+## 🎯 Project Context
+This is a Rust-based trading alert system that monitors multiple markets (A-shares, US stocks, crypto) and sends notifications based on trading strategies.
+
+## 🦀 Rust Development Rules
+
+### Code Style
+- Use `cargo fmt` formatting standards
+- Follow Rust naming conventions (snake_case for functions/variables, PascalCase for types)
+- Prefer explicit error handling with `Result<T, E>` over panics
+- Use `#[derive(Debug)]` for all custom types
+- Add comprehensive documentation with `///` for public APIs
+
+### Architecture Patterns
+- Use the Repository pattern for data access (see `src/db.rs`)
+- Implement the Strategy pattern for different trading algorithms
+- Use dependency injection for testability
+- Prefer composition over inheritance
+- Keep business logic separate from infrastructure concerns
+
+### Error Handling
+- Create custom error types using `thiserror` crate
+- Always handle errors explicitly, never use `unwrap()` in production code
+- Use `anyhow` for application-level error handling
+- Log errors with context using `tracing` crate
+
+### Performance
+- Use `tokio` for async operations
+- Prefer `Vec<T>` over `LinkedList<T>` for most collections
+- Use `Arc<T>` and `Mutex<T>` for shared state in async contexts
+- Profile with `cargo bench` before optimizing
+
+## 💹 Trading System Rules
+
+### Data Handling
+- Always validate market data before processing
+- Use proper timezone handling for different markets
+- Implement circuit breakers for API rate limits
+- Cache frequently accessed data appropriately
+
+### Security
+- Never log sensitive data (API keys, user credentials)
+- Use environment variables for configuration
+- Implement proper input validation
+- Use HTTPS for all external API calls
+
+### Testing
+- Write unit tests for all business logic
+- Use integration tests for API endpoints
+- Mock external dependencies in tests
+- Maintain >80% code coverage
+
+## 📁 File Organization Rules
+
+### Code Structure
+- Keep modules focused and cohesive
+- Use `mod.rs` files for module organization
+- Place related functionality in the same module
+- Separate concerns: models, services, controllers
+
+### Documentation
+- Update `AI_CONTEXT.md` when adding new features
+- Document breaking changes in migration files
+- Keep README.md up to date with setup instructions
+- Use inline comments for complex business logic
+
+## 🔧 Development Workflow
+
+### Before Coding
+1. Check `docs/AI_CONTEXT.md` for project context
+2. Review existing patterns in the codebase
+3. Consider error handling and testing strategy
+4. Check for similar existing functionality
+
+### Code Changes
+- Make atomic commits with clear messages
+- Run `cargo test` before committing
+- Update documentation if APIs change
+- Consider backward compatibility
+
+### AI Collaboration
+- Provide specific context when asking for help
+- Reference existing code patterns
+- Ask for code review on complex changes
+- Request tests for new functionality
+
+## 🚨 Critical Constraints
+
+### Never Do
+- Use `unwrap()` or `expect()` without careful consideration
+- Ignore compiler warnings
+- Commit code that doesn't compile
+- Hardcode sensitive configuration values
+- Make breaking changes without migration strategy
+
+### Always Do
+- Handle all `Result` types explicitly
+- Add proper error context
+- Write tests for new functionality
+- Update documentation for public APIs
+- Consider performance implications
+
+## 📊 Monitoring and Observability
+- Use structured logging with `tracing`
+- Add metrics for critical operations
+- Monitor external API response times
+- Track error rates and types
+- Log important business events 

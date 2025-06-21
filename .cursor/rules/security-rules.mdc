@@ -1,0 +1,294 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Security Rules
+
+## 🔒 Data Protection
+
+### Environment Variables
+- Never hardcode API keys, passwords, or tokens in source code
+- Use `.env` files for local development (ensure they're in `.gitignore`)
+- Use secure environment variable management in production
+
+```rust
+// ✅ Correct way to handle secrets
+use std::env;
+
+fn get_api_key() -> Result<String, env::VarError> {
+    env::var("YAHOO_API_KEY")
+}
+
+// ❌ Never do this
+const API_KEY: &str = "your-secret-key-here"; // DON'T DO THIS!
+```
+
+### Logging Security
+```rust
+// ✅ Safe logging
+tracing::info!("Processing request for symbol: {}", symbol);
+
+// ❌ Dangerous logging - exposes sensitive data
+tracing::info!("API key: {}", api_key); // DON'T LOG SECRETS!
+tracing::info!("User email: {}", email); // DON'T LOG PII!
+```
+
+### Input Validation
+```rust
+// ✅ Always validate and sanitize inputs
+fn validate_stock_symbol(symbol: &str) -> Result<String, ValidationError> {
+    let cleaned = symbol.trim().to_uppercase();
+    
+    if cleaned.is_empty() || cleaned.len() > 10 {
+        return Err(ValidationError::InvalidLength);
+    }
+    
+    if !cleaned.chars().all(|c| c.is_alphanumeric()) {
+        return Err(ValidationError::InvalidCharacters);
+    }
+    
+    Ok(cleaned)
+}
+
+// ✅ SQL injection prevention (using sqlx)
+async fn get_user_alerts(user_id: i32) -> Result<Vec<Alert>, sqlx::Error> {
+    sqlx::query_as!(
+        Alert,
+        "SELECT * FROM alerts WHERE user_id = $1",
+        user_id
+    )
+    .fetch_all(&pool)
+    .await
+}
+```
+
+## 🌐 Network Security
+
+### HTTPS Only
+```rust
+// ✅ Always use HTTPS for external APIs
+let client = reqwest::Client::builder()
+    .https_only(true)
+    .timeout(Duration::from_secs(30))
+    .build()?;
+```
+
+### Rate Limiting Protection
+```rust
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
+
+pub struct RateLimiter {
+    last_request: Mutex<Instant>,
+    min_interval: Duration,
+}
+
+impl RateLimiter {
+    pub async fn wait_if_needed(&self) {
+        let mut last = self.last_request.lock().await;
+        let now = Instant::now();
+        let elapsed = now.duration_since(*last);
+        
+        if elapsed < self.min_interval {
+            let wait_time = self.min_interval - elapsed;
+            tokio::time::sleep(wait_time).await;
+        }
+        
+        *last = Instant::now();
+    }
+}
+```
+
+### Error Information Disclosure
+```rust
+// ✅ Safe error handling - don't expose internal details
+pub enum PublicError {
+    #[error("Invalid request")]
+    InvalidRequest,
+    #[error("Service temporarily unavailable")]
+    ServiceUnavailable,
+    #[error("Authentication required")]
+    AuthenticationRequired,
+}
+
+// ✅ Internal errors for logging
+pub enum InternalError {
+    #[error("Database connection failed: {0}")]
+    DatabaseConnection(sqlx::Error),
+    #[error("External API error: {0}")]
+    ExternalApi(reqwest::Error),
+}
+
+// Convert internal errors to safe public errors
+impl From<InternalError> for PublicError {
+    fn from(err: InternalError) -> Self {
+        // Log the detailed error internally
+        tracing::error!("Internal error: {:?}", err);
+        
+        // Return generic error to user
+        match err {
+            InternalError::DatabaseConnection(_) => PublicError::ServiceUnavailable,
+            InternalError::ExternalApi(_) => PublicError::ServiceUnavailable,
+        }
+    }
+}
+```
+
+## 🔐 Authentication & Authorization
+
+### API Key Management
+```rust
+#[derive(Debug)]
+pub struct ApiKeyManager {
+    keys: HashMap<String, ApiKeyInfo>,
+}
+
+#[derive(Debug)]
+struct ApiKeyInfo {
+    hash: String,
+    permissions: Vec<Permission>,
+    rate_limit: RateLimit,
+    expires_at: Option<DateTime<Utc>>,
+}
+
+impl ApiKeyManager {
+    pub fn validate_key(&self, key: &str) -> Result<&ApiKeyInfo, AuthError> {
+        let hash = self.hash_key(key);
+        self.keys.get(&hash).ok_or(AuthError::InvalidKey)
+    }
+    
+    fn hash_key(&self, key: &str) -> String {
+        // Use a proper hashing algorithm
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update(key.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+}
+```
+
+### Session Management
+```rust
+use uuid::Uuid;
+
+#[derive(Debug)]
+pub struct Session {
+    id: Uuid,
+    user_id: i32,
+    created_at: DateTime<Utc>,
+    expires_at: DateTime<Utc>,
+    ip_address: Option<String>,
+}
+
+impl Session {
+    pub fn is_valid(&self) -> bool {
+        Utc::now() < self.expires_at
+    }
+    
+    pub fn should_rotate(&self) -> bool {
+        let age = Utc::now().signed_duration_since(self.created_at);
+        age > chrono::Duration::hours(1)
+    }
+}
+```
+
+## 🛡️ Data Sanitization
+
+### Email Validation
+```rust
+use regex::Regex;
+
+fn validate_email(email: &str) -> Result<String, ValidationError> {
+    let email = email.trim().to_lowercase();
+    
+    let email_regex = Regex::new(
+        r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    ).unwrap();
+    
+    if email_regex.is_match(&email) {
+        Ok(email)
+    } else {
+        Err(ValidationError::InvalidEmail)
+    }
+}
+```
+
+### XSS Prevention
+```rust
+// ✅ HTML escaping for user content
+fn escape_html(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
+}
+```
+
+## 🔍 Security Monitoring
+
+### Audit Logging
+```rust
+#[derive(Debug, Serialize)]
+struct AuditEvent {
+    timestamp: DateTime<Utc>,
+    user_id: Option<i32>,
+    action: String,
+    resource: String,
+    ip_address: Option<String>,
+    user_agent: Option<String>,
+    success: bool,
+}
+
+async fn log_audit_event(event: AuditEvent) {
+    tracing::info!(
+        target: "audit",
+        timestamp = %event.timestamp,
+        user_id = event.user_id,
+        action = %event.action,
+        resource = %event.resource,
+        success = event.success,
+        "Audit event"
+    );
+}
+```
+
+### Security Headers
+```rust
+// For web endpoints, always include security headers
+use axum::response::Response;
+use axum::http::HeaderMap;
+
+fn add_security_headers(mut response: Response) -> Response {
+    let headers = response.headers_mut();
+    headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
+    headers.insert("X-Frame-Options", "DENY".parse().unwrap());
+    headers.insert("X-XSS-Protection", "1; mode=block".parse().unwrap());
+    headers.insert("Strict-Transport-Security", "max-age=31536000; includeSubDomains".parse().unwrap());
+    response
+}
+```
+
+## 🚨 Security Checklist
+
+### Before Deployment
+- [ ] All secrets moved to environment variables
+- [ ] Input validation implemented for all endpoints
+- [ ] SQL injection protection verified
+- [ ] HTTPS enforced for all communications
+- [ ] Security headers configured
+- [ ] Audit logging implemented
+- [ ] Rate limiting configured
+- [ ] Error messages don't expose internal details
+
+### Regular Security Reviews
+- [ ] Dependency vulnerability scan (cargo audit)
+- [ ] Code review for security issues
+- [ ] Log analysis for suspicious activities
+- [ ] Access control verification
+- [ ] API key rotation schedule
+- [ ] Security incident response plan updated
+
+

@@ -1,0 +1,135 @@
+{
+  "modes": {
+    "rust_expert": {
+      "name": "Rust Expert",
+      "description": "Specialized in Rust development with focus on performance and safety",
+      "systemPrompt": "You are a Rust expert specializing in high-performance trading systems. Focus on memory safety, zero-cost abstractions, and async programming. Always consider error handling, testing, and documentation. Reference the project's .cursorrules and trading-specific requirements.",
+      "rules": [
+        ".cursor/rules/rust-rules.mdc"
+      ],
+      "temperature": 0.3,
+      "contextFiles": [
+        "src/**/*.rs",
+        "Cargo.toml",
+        "docs/AI_CONTEXT.md"
+      ]
+    },
+    
+    "trading_analyst": {
+      "name": "Trading System Analyst",
+      "description": "Expert in trading algorithms and financial market analysis",
+      "systemPrompt": "You are a trading system analyst with deep knowledge of financial markets, trading strategies, and risk management. Focus on A-share, US stock, and crypto markets. Always consider regulatory compliance, risk management, and market microstructure.",
+      "rules": [
+        ".cursor/rules/trading-rules.mdc"
+      ],
+      "temperature": 0.4,
+      "contextFiles": [
+        "src/fetcher.rs",
+        "src/models.rs",
+        "docs/technical/A_SHARE_DATA_SOURCE_ANALYSIS.md",
+        "docs/AI_CONTEXT.md"
+      ]
+    },
+    
+    "security_auditor": {
+      "name": "Security Auditor",
+      "description": "Security-focused development with emphasis on data protection",
+      "systemPrompt": "You are a security expert focused on secure coding practices, data protection, and compliance. Always consider OWASP guidelines, secure authentication, input validation, and data privacy. Never expose sensitive information in logs or responses.",
+      "rules": [
+        ".cursor/rules/security-rules.mdc"
+      ],
+      "temperature": 0.2,
+      "contextFiles": [
+        "src/**/*.rs",
+        "_env.example",
+        "railway.env.example",
+        "docs/deployment/RAILWAY_SECURITY_GUIDE.md"
+      ]
+    },
+    
+    "devops_engineer": {
+      "name": "DevOps Engineer", 
+      "description": "Infrastructure, deployment, and operational excellence",
+      "systemPrompt": "You are a DevOps engineer specializing in Rust application deployment, monitoring, and infrastructure management. Focus on Docker, Railway deployment, database migrations, and operational monitoring. Consider scalability, reliability, and maintainability.",
+      "rules": [
+        ".cursor/rules/rust-rules.mdc"
+      ],
+      "temperature": 0.3,
+      "contextFiles": [
+        "Dockerfile.*",
+        "docker-compose*.yml",
+        "railway.toml",
+        "migrations/**/*.sql",
+        "scripts/deployment/**/*",
+        "docs/deployment/**/*.md"
+      ]
+    },
+    
+    "architect": {
+      "name": "System Architect",
+      "description": "High-level system design and architecture decisions",
+      "systemPrompt": "You are a system architect with expertise in designing scalable, maintainable trading systems. Focus on system design patterns, data flow architecture, API design, and technology decisions. Consider long-term maintainability, scalability, and team productivity.",
+      "rules": [
+        ".cursor/rules/rust-rules.mdc",
+        ".cursor/rules/trading-rules.mdc"
+      ],
+      "temperature": 0.4,
+      "contextFiles": [
+        "docs/architecture.mermaid",
+        "docs/PROJECT_STRUCTURE.md",
+        "docs/technical-specs.md",
+        "src/lib.rs",
+        "src/main.rs",
+        "Cargo.toml"
+      ]
+    },
+    
+    "documentation_writer": {
+      "name": "Documentation Writer",
+      "description": "Technical writing and documentation maintenance",
+      "systemPrompt": "You are a technical writer specializing in clear, comprehensive documentation for trading systems. Focus on user guides, API documentation, architecture documentation, and onboarding materials. Make complex concepts accessible while maintaining technical accuracy.",
+      "rules": [],
+      "temperature": 0.5,
+      "contextFiles": [
+        "docs/**/*.md",
+        "README.md",
+        "src/**/*.rs"
+      ]
+    },
+    
+    "qa_engineer": {
+      "name": "QA Engineer",
+      "description": "Quality assurance, testing, and validation",
+      "systemPrompt": "You are a QA engineer focused on comprehensive testing strategies for trading systems. Emphasize unit testing, integration testing, performance testing, and edge case validation. Consider market data edge cases, network failures, and system reliability.",
+      "rules": [
+        ".cursor/rules/rust-rules.mdc",
+        ".cursor/rules/trading-rules.mdc"
+      ],
+      "temperature": 0.3,
+      "contextFiles": [
+        "src/**/*.rs",
+        "tests/**/*.rs",
+        "scripts/testing/**/*"
+      ]
+    }
+  },
+  
+  "defaultMode": "rust_expert",
+  
+  "contextSettings": {
+    "maxTokens": 8000,
+    "includeRecentChanges": true,
+    "includeDependencies": true,
+    "autoSelectRelevantFiles": true
+  },
+  
+  "shortcuts": {
+    "re": "rust_expert",
+    "ta": "trading_analyst", 
+    "sa": "security_auditor",
+    "do": "devops_engineer",
+    "ar": "architect",
+    "dw": "documentation_writer",
+    "qa": "qa_engineer"
+  }
+} 

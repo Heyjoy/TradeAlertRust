@@ -1,0 +1,183 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Trading System Business Rules
+
+## 💹 Market Data Handling
+
+### Data Validation
+- Always validate timestamps are within reasonable bounds
+- Check for missing or null price data
+- Validate volume data is non-negative
+- Ensure price changes are within circuit breaker limits
+
+### Market Hours
+```rust
+// A-Share Market Hours (CST)
+const A_SHARE_OPEN: &str = "09:30";
+const A_SHARE_CLOSE: &str = "15:00";
+const A_SHARE_LUNCH_START: &str = "11:30";
+const A_SHARE_LUNCH_END: &str = "13:00";
+
+// US Market Hours (EST/EDT)
+const US_MARKET_OPEN: &str = "09:30";
+const US_MARKET_CLOSE: &str = "16:00";
+
+// Crypto markets are 24/7
+```
+
+### Rate Limiting
+- A-Share APIs: Max 100 requests/minute
+- Yahoo Finance: Max 2000 requests/hour  
+- Alpha Vantage: Max 5 requests/minute (free tier)
+- Implement exponential backoff for failed requests
+
+## 🚨 Alert Generation Rules
+
+### Signal Validation
+```rust
+pub struct AlertSignal {
+    pub symbol: String,
+    pub signal_type: SignalType,
+    pub confidence: f64,  // 0.0 to 1.0
+    pub timestamp: DateTime<Utc>,
+    pub price: f64,
+    pub volume: Option<u64>,
+}
+
+// Only generate alerts for high-confidence signals
+const MIN_CONFIDENCE_THRESHOLD: f64 = 0.7;
+```
+
+### Alert Frequency Limits
+- Max 5 alerts per symbol per day
+- No duplicate alerts within 30 minutes
+- Batch similar alerts together
+- Respect user's quiet hours setting
+
+### Trading Strategies
+
+#### Limit Up Pullback Strategy
+```rust
+pub struct LimitUpPullbackConfig {
+    pub min_volume_ratio: f64,      // Minimum volume vs 20-day average
+    pub pullback_percentage: f64,   // Pullback from limit up (e.g., 0.03 for 3%)
+    pub time_window_minutes: u32,   // Time window to detect pullback
+    pub min_market_cap: f64,        // Minimum market cap filter
+}
+```
+
+#### Multi-Market Correlation
+- Track correlation between A-shares and US ADRs
+- Monitor crypto market sentiment impact
+- Consider currency exchange rate effects
+
+## 🔒 Risk Management
+
+### Position Sizing
+- Never recommend position size > 5% of portfolio
+- Consider volatility in position sizing
+- Account for correlation between positions
+
+### Stop Loss Rules
+- Always include stop loss recommendations
+- Stop loss should not exceed 8% for individual stocks
+- Tighter stops for volatile markets
+
+### Circuit Breakers
+```rust
+pub enum CircuitBreakerLevel {
+    Level1,  // 7% decline - 15 minute halt
+    Level2,  // 13% decline - 15 minute halt  
+    Level3,  // 20% decline - market closed
+}
+```
+
+## 📊 Performance Metrics
+
+### Strategy Evaluation
+- Win rate (% of profitable trades)
+- Average profit per trade
+- Maximum drawdown
+- Sharpe ratio
+- Sortino ratio
+
+### System Performance
+- Alert delivery latency < 5 seconds
+- Data refresh rate < 30 seconds
+- 99.9% uptime during market hours
+- Error rate < 0.1%
+
+## 🌍 Multi-Market Considerations
+
+### Currency Handling
+- Always specify currency for prices
+- Convert to user's preferred currency
+- Account for currency hedging costs
+
+### Regulatory Compliance
+- Respect trading halts and suspensions
+- Follow insider trading regulations
+- Implement proper disclosure requirements
+- Maintain audit trail for all recommendations
+
+### Time Zone Management
+```rust
+use chrono::{DateTime, Utc, TimeZone};
+use chrono_tz::{Asia::Shanghai, America::New_York, Tz};
+
+pub fn convert_to_market_time(utc_time: DateTime<Utc>, market: Market) -> DateTime<Tz> {
+    match market {
+        Market::AShare => Shanghai.from_utc_datetime(&utc_time.naive_utc()),
+        Market::US => New_York.from_utc_datetime(&utc_time.naive_utc()),
+        Market::Crypto => utc_time.with_timezone(&Utc),
+    }
+}
+```
+
+## 📈 Data Quality Standards
+
+### Price Data Validation
+```rust
+pub fn validate_price_data(price: f64, previous_price: f64) -> Result<(), ValidationError> {
+    // Check for reasonable price range
+    if price <= 0.0 {
+        return Err(ValidationError::InvalidPrice("Price must be positive"));
+    }
+    
+    // Check for suspicious price movements (>50% change)
+    let change_ratio = (price - previous_price).abs() / previous_price;
+    if change_ratio > 0.5 {
+        return Err(ValidationError::SuspiciousPrice("Price change too large"));
+    }
+    
+    Ok(())
+}
+```
+
+### Volume Data Validation
+- Volume must be non-negative
+- Check for unusual volume spikes (>10x average)
+- Validate volume during market hours
+
+## 🎯 Alert Prioritization
+
+### High Priority Alerts
+- Limit up/down events
+- Volume spikes >5x average
+- Breaking news impact
+- Technical breakouts
+
+### Medium Priority Alerts
+- Moving average crossovers
+- Support/resistance breaks
+- Sector rotation signals
+
+### Low Priority Alerts
+- Minor price movements
+- Low volume signals
+- Off-hours notifications
+
+

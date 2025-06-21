@@ -10,6 +10,7 @@
 1. **[当前状态](docs/Requirement/CURRENT_STATUS.md)** - 了解当前讨论重点和待决策问题
 2. **[项目导航](docs/Requirement/README.md)** - 掌握项目概况和文档结构
 3. **[工作模式](docs/Requirement/0.0-REQUIREMENT_MANAGEMENT_STRATEGY.md)** - 理解协作方式
+4. **[配置管理规则](docs/technical/CONFIGURATION_MANAGEMENT.md)** - 掌握配置命名规则和文件位置
 
 ### Step 2: 根据话题读取专项文档 (按需)
 根据用户提到的话题，选择性读取：
@@ -26,6 +27,7 @@
 
 #### 如果讨论技术实现
 - **[开发计划](docs/development/DEVELOPMENT_PLAN.md)**
+- **[配置管理规则](docs/technical/CONFIGURATION_MANAGEMENT.md)** - 环境变量命名和配置文件位置
 
 #### 如果讨论产品规划
 - **[PRD主文档](docs/Requirement/1.1-PRD_MASTER.md)**
@@ -111,14 +113,47 @@ AI: [读取相关需求文档]
 - **PRD_MASTER.md** - 产品方向调整
 - **0.0-REQUIREMENT_MANAGEMENT_STRATEGY.md** - 工作模式优化
 
+## 🤖 **AI协作工作流程**
+
+### 完整协作流程指南
+📋 **详细说明**: 参见 `docs/ai-collaboration-workflow.md`
+
+#### 🚀 工作会话启动
+```bash
+# 运行启动脚本进行环境检查和上下文加载
+scripts/development/start_work_session.bat
+```
+
+#### 🎭 AI专家模式选择
+根据任务类型选择合适的AI专家模式：
+- `re` - Rust Expert (核心功能开发)
+- `ta` - Trading Analyst (交易逻辑实现)
+- `sa` - Security Auditor (安全审查)
+- `do` - DevOps Engineer (部署运维)
+- `ar` - System Architect (架构设计)
+- `dw` - Documentation Writer (文档编写)
+- `qa` - QA Engineer (测试质量保证)
+
+#### 🔄 标准开发循环
+1. **任务分析** - 需求澄清、方案设计、风险识别
+2. **代码实现** - 遵循规范、实时审查、文档同步
+3. **验证确认** - 质量检查、功能验证、文档验证
+
+#### 📊 工作会话收尾
+```bash
+# 运行收尾脚本进行质量检查和状态总结
+scripts/development/end_work_session.bat
+```
+
 ---
 
 ## 📝 **使用说明**
 
 ### 对用户
-每次对话开始时，只需要说：
-- "读一下START_HERE，我们开始工作"
-- "按启动流程，我们继续A股策略讨论"
+每次对话开始时，可以选择：
+- **需求讨论**: "读一下START_HERE，我们开始工作"
+- **开发会话**: "运行start_work_session.bat，开始编码"
+- **专项任务**: "按启动流程，我们继续A股策略讨论"
 
 ### 对AI
 收到指令后：
@@ -127,9 +162,22 @@ AI: [读取相关需求文档]
 3. 根据话题读取专项文档
 4. 确认理解并开始协作
 
+## 📋 **重要参考文档**
+
+### **🏗️ 架构和设计**
+- **[项目架构文档](PROJECT_ARCHITECTURE.md)** - 完整系统架构和技术栈
+- **[AI协作工作流程](ai-collaboration-workflow.md)** - 详细协作流程指南
+- **[配置管理规则](technical/CONFIGURATION_MANAGEMENT.md)** - 配置规范
+
+### **📊 项目管理**
+- **[开发状态跟踪](development-status.md)** - 项目整体进展
+- **[当前任务管理](../tasks/current-tasks.md)** - 任务跟踪系统
+- **[Phase1完成总结](phase1-completion-summary.md)** - 里程碑记录
+
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **创建时间**: 2025-06-14  
+**最后更新**: 2025-01-09  
 **维护人**: AI助手  
 **更新频率**: 根据工作模式变化调整 
