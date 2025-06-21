@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}投资监控中心 - 交易预警系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+    .dashboard-section {
+        margin-bottom: 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .section-header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .section-content {
+        padding: 1.5rem;
+    }
+
+    /* 紧急信号区域 */
+    .urgent-alerts {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    }
+
+    .urgent-alert-item {
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+
+    .urgent-alert-item:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateX(5px);
+    }
+
+    .urgent-alert-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .urgent-alert-text {
+        color: white;
+        font-weight: 500;
+    }
+
+    .urgent-arrow {
+        color: white;
+        font-size: 1.2rem;
+    }
+
+    /* 市场概况卡片 */
+    .markets-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .market-card {
+        background: white;
+        border-radius: 12px;
+        border: 2px solid #f1f3f4;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .market-card:hover {
+        border-color: var(--accent-color);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .market-card-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .market-flag {
+        font-size: 2rem;
+        line-height: 1;
+    }
+
+    .market-info h4 {
+        margin: 0;
+        color: var(--primary-color);
+        font-size: 1.3rem;
+    }
+
+    .market-status {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 0;
+    }
+
+    .market-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px solid #f1f3f4;
+    }
+
+    .active-count {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .market-trend {
+        font-size: 1.1rem;
+        font-weight: 600;
+        padding: 0.3rem 0.6rem;
+        border-radius: 6px;
+    }
+
+    .trend-up {
+        color: var(--success-color);
+        background: rgba(46, 204, 113, 0.1);
+    }
+
+    .trend-down {
+        color: var(--danger-color);
+        background: rgba(231, 76, 60, 0.1);
+    }
+
+    /* 策略监控区域 */
+    .strategies-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .strategy-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+        padding: 1.25rem;
+        border-left: 4px solid var(--accent-color);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .strategy-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .strategy-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: 0.5rem;
+    }
+
+    .strategy-type {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 0.75rem;
+    }
+
+    .strategy-signals {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--accent-color);
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 0 0.5rem;
+        }
+
+        .section-content {
+            padding: 1rem;
+        }
+
+        .markets-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .market-card {
+            padding: 1rem;
+        }
+
+        .urgent-alert-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+    }
+
+    /* 快速跳转按钮 */
+    .quick-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .quick-action-btn {
+        flex: 1;
+        min-width: 200px;
+        padding: 0.75rem 1rem;
+        background: var(--accent-color);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        text-align: center;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .quick-action-btn:hover {
+        background: #2980b9;
+        color: white;
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- 紧急信号区域 -->
+    {% if urgent_alerts.len() > 0 %}
+    <div class="dashboard-section">
+        <div class="section-header urgent-alerts">
+            <h3><i class="fas fa-exclamation-triangle me-2"></i>🚨 紧急信号</h3>
+        </div>
+        <div class="section-content" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); padding: 0;">
+            {% for alert in urgent_alerts %}
+            <div class="urgent-alert-item">
+                <span class="urgent-alert-text">{{ alert.symbol }} 预警触发</span>
+                <span class="urgent-arrow">→</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 基础监控区域 -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h3><i class="fas fa-chart-area me-2"></i>💼 基础监控</h3>
+        </div>
+        <div class="section-content">
+            <div class="markets-grid">
+                {% for market in markets %}
+                <div class="market-card" onclick="location.href='/market/{{ market.market.to_str() }}'">
+                    <div class="market-card-header">
+                        <div class="market-flag">{{ market.market.flag_emoji() }}</div>
+                        <div class="market-info">
+                            <h4>{{ market.market.display_name() }}</h4>
+                            <p class="market-status">{{ market.status }}</p>
+                        </div>
+                    </div>
+                    <div class="market-stats">
+                        <div class="active-count">{{ market.active_count }}个活跃</div>
+                                                 <div class="market-trend {% if market.trend > 0.0 %}trend-up{% else %}trend-down{% endif %}">
+                             {% if market.trend > 0.0 %}+{% endif %}{{ market.trend }}%
+                         </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 策略监控区域 -->
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h3><i class="fas fa-brain me-2"></i>⚡ 策略监控</h3>
+        </div>
+        <div class="section-content">
+            {% if strategies.len() > 0 %}
+            <div class="strategies-grid">
+                {% for strategy in strategies %}
+                <div class="strategy-card" onclick="location.href='/strategy'">
+                    <div class="strategy-title">{{ strategy.name }}</div>
+                    <div class="strategy-type">{{ strategy.market_type }}</div>
+                    <div class="strategy-signals">{{ strategy.signal_count }}个信号</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="strategies-grid">
+                <div class="strategy-card" onclick="location.href='/strategy'">
+                    <div class="strategy-title">涨停回踩</div>
+                    <div class="strategy-type">A股专用</div>
+                    <div class="strategy-signals">2个新信号</div>
+                </div>
+                <div class="strategy-card" onclick="location.href='/strategy'">
+                    <div class="strategy-title">突破监控</div>
+                    <div class="strategy-type">全市场</div>
+                    <div class="strategy-signals">1个信号</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 快速操作区域 -->
+    <div class="quick-actions">
+        <a href="/alerts/new" class="quick-action-btn">
+            <i class="fas fa-plus me-2"></i>添加预警
+        </a>
+        <a href="/strategy" class="quick-action-btn">
+            <i class="fas fa-brain me-2"></i>策略中心
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 添加页面加载动画
+    $('.market-card').each(function(index) {
+        $(this).css('animation-delay', (index * 0.1) + 's');
+        $(this).addClass('fadeInUp');
+    });
+
+    // 实时更新市场状态
+    setInterval(function() {
+        // TODO: 实现市场状态实时更新
+        console.log('Updating market status...');
+    }, 30000);
+});
+
+// 添加CSS动画
+const style = document.createElement('style');
+style.textContent = `
+    .fadeInUp {
+        animation: fadeInUp 0.6s ease-out forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %} 

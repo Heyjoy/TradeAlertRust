@@ -1,0 +1,569 @@
+{% extends "base.html" %}
+
+{% block title %}{{ market.display_name() }}监控 - 交易预警系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .market-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+
+    .market-header {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .market-header-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .market-title {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .market-flag {
+        font-size: 2.5rem;
+        line-height: 1;
+    }
+
+    .market-title h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+
+    .back-button {
+        color: rgba(255,255,255,0.8);
+        text-decoration: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+    }
+
+    .back-button:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+    }
+
+    .market-status-bar {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .market-status {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    .status-open {
+        background: var(--success-color);
+    }
+
+    .status-closed {
+        background: var(--danger-color);
+    }
+
+    .status-24h {
+        background: var(--accent-color);
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    .next-event {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    /* 预警卡片网格 */
+    .alerts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .market-alert-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e9ecef;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .market-alert-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border-color: var(--accent-color);
+    }
+
+    .market-alert-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #f1f3f4;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .alert-symbol {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--primary-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .market-alert-body {
+        padding: 1.25rem;
+    }
+
+    .price-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid var(--accent-color);
+    }
+
+    .current-price {
+        font-size: 1.6rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .price-currency {
+        color: #666;
+        font-size: 0.9rem;
+        margin-left: 0.3rem;
+    }
+
+    .target-info {
+        color: #666;
+        font-size: 0.95rem;
+    }
+
+    /* 市场专业信息 */
+    .market-specific-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f1f3f4;
+    }
+
+    .info-item {
+        text-align: center;
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+
+    .info-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 0.25rem;
+    }
+
+    .info-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
+    /* A股专业信息样式 */
+    .cn-specific .limit-up-distance {
+        color: var(--success-color);
+    }
+
+    .cn-specific .limit-down-distance {
+        color: var(--danger-color);
+    }
+
+    .cn-specific .volume-amount {
+        color: var(--accent-color);
+    }
+
+    /* 美股专业信息样式 */
+    .us-specific .premarket-price {
+        color: var(--warning-color);
+    }
+
+    .us-specific .earnings-date {
+        color: var(--accent-color);
+    }
+
+    /* 加密货币专业信息样式 */
+    .crypto-specific .high-volatility {
+        color: var(--danger-color);
+        animation: pulse 2s infinite;
+    }
+
+    .crypto-specific .market-cap {
+        color: var(--success-color);
+    }
+
+    /* 操作按钮 */
+    .alert-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .action-btn {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: white;
+        color: #666;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .action-btn:hover {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #666;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #ddd;
+    }
+
+    .empty-state h3 {
+        margin-bottom: 0.5rem;
+        color: var(--primary-color);
+    }
+
+    /* 底部操作区 */
+    .market-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding: 1.5rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .market-action-btn {
+        flex: 1;
+        padding: 1rem;
+        text-decoration: none;
+        text-align: center;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .primary-action {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .primary-action:hover {
+        background: #2980b9;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .secondary-action {
+        background: #f8f9fa;
+        color: var(--primary-color);
+        border: 1px solid #ddd;
+    }
+
+    .secondary-action:hover {
+        background: #e9ecef;
+        color: var(--primary-color);
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .market-container {
+            padding: 0 0.5rem;
+        }
+
+        .market-header-content {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .market-status-bar {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .alerts-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .market-actions {
+            flex-direction: column;
+        }
+
+        .price-display {
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="market-container">
+    <!-- 市场头部 -->
+    <div class="market-header">
+        <div class="market-header-content">
+            <div class="market-title">
+                <div class="market-flag">{{ market.flag_emoji() }}</div>
+                <h1>{{ market.display_name() }}监控</h1>
+                <span class="badge bg-light text-dark">{{ alerts.len() }}个活跃</span>
+            </div>
+            <a href="/" class="back-button">
+                <i class="fas fa-arrow-left me-2"></i>返回首页
+            </a>
+        </div>
+    </div>
+
+    <!-- 市场状态栏 -->
+    <div class="market-status-bar">
+        <div class="market-status">
+            <div class="status-indicator 
+                {% if market_status == "开盘中" %}status-open
+                {% else if market_status == "24h交易" %}status-24h
+                {% else %}status-closed{% endif %}"></div>
+            <span>{{ market_status }}</span>
+        </div>
+        <div class="next-event">{{ next_event }}</div>
+    </div>
+
+    <!-- 预警列表 -->
+    {% if alerts.len() > 0 %}
+    <div class="alerts-grid">
+        {% for alert in alerts %}
+        <div class="market-alert-card">
+            <div class="market-alert-header">
+                <div class="alert-symbol">
+                    <i class="fas fa-chart-line"></i>
+                    {{ alert.symbol }}
+                </div>
+                <span class="alert-status {{ alert.status }}">
+                    {% if alert.status == "active" %}活跃
+                    {% else if alert.status == "triggered" %}已触发
+                    {% else %}已取消{% endif %}
+                </span>
+            </div>
+            <div class="market-alert-body">
+                <div class="price-display">
+                    <div>
+                        <div class="current-price">
+                            {{ market.currency_symbol() }}150.20
+                            <span class="price-currency">
+                                {% if market.to_str() == "us" %}USD
+                                {% else if market.to_str() == "cn" %}CNY
+                                {% else %}USDT{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="target-info">
+                        目标: {{ alert.condition }} {{ market.currency_symbol() }}{{ alert.price }}
+                    </div>
+                </div>
+
+                <!-- 市场专业信息 -->
+                <div class="market-specific-info 
+                    {% if market.to_str() == "us" %}us-specific
+                    {% else if market.to_str() == "cn" %}cn-specific
+                    {% else %}crypto-specific{% endif %}">
+                    
+                    {% if market.to_str() == "us" %}
+                    <!-- 美股专业信息 -->
+                    <div class="info-item">
+                        <div class="info-label">盘前价格</div>
+                        <div class="info-value premarket-price">$149.85</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">财报日期</div>
+                        <div class="info-value earnings-date">1月25日</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">涨跌幅</div>
+                        <div class="info-value">+2.3%</div>
+                    </div>
+                    {% else if market.to_str() == "cn" %}
+                    <!-- A股专业信息 -->
+                    <div class="info-item">
+                        <div class="info-label">距离涨停</div>
+                        <div class="info-value limit-up-distance">+7.8%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">成交额</div>
+                        <div class="info-value volume-amount">12.3亿</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">换手率</div>
+                        <div class="info-value">3.2%</div>
+                    </div>
+                    {% else %}
+                    <!-- 加密货币专业信息 -->
+                    <div class="info-item">
+                        <div class="info-label">24h变化</div>
+                        <div class="info-value">+8.2%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">市值</div>
+                        <div class="info-value market-cap">1.2T</div>
+                    </div>  
+                    <div class="info-item">
+                        <div class="info-label">波动警告</div>
+                        <div class="info-value high-volatility">高</div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="alert-actions">
+                    <button class="action-btn" onclick="pauseAlert({{ alert.id }})">
+                        <i class="fas fa-pause me-1"></i>暂停
+                    </button>
+                    <button class="action-btn" onclick="editAlert({{ alert.id }})">
+                        <i class="fas fa-edit me-1"></i>编辑
+                    </button>
+                    <button class="action-btn" onclick="deleteAlert({{ alert.id }})">
+                        <i class="fas fa-trash me-1"></i>删除
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-bell-slash"></i>
+        <h3>暂无{{ market.display_name() }}预警</h3>
+        <p>创建您的第一个{{ market.display_name() }}预警，开始专业化监控</p>
+    </div>
+    {% endif %}
+
+    <!-- 底部操作区 -->
+    <div class="market-actions">
+        <a href="/strategy" class="market-action-btn secondary-action">
+            <i class="fas fa-brain me-2"></i>策略监控
+        </a>
+        <a href="/alerts/new?market={{ market.to_str() }}" class="market-action-btn primary-action">
+            <i class="fas fa-plus me-2"></i>添加{{ market.display_name() }}预警
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 添加页面加载动画
+    $('.market-alert-card').each(function(index) {
+        $(this).css('animation-delay', (index * 0.1) + 's');
+        $(this).addClass('fadeInUp');
+    });
+
+    // 实时更新价格
+    setInterval(function() {
+        updateMarketPrices();
+    }, 30000);
+});
+
+function updateMarketPrices() {
+    $('.market-alert-card').each(function() {
+        const symbol = $(this).find('.alert-symbol').text().trim();
+        // TODO: 实现实时价格更新
+        console.log('Updating price for:', symbol);
+    });
+}
+
+function pauseAlert(alertId) {
+    // TODO: 实现暂停预警功能
+    console.log('Pausing alert:', alertId);
+}
+
+function editAlert(alertId) {
+    // TODO: 实现编辑预警功能
+    window.location.href = `/alerts/${alertId}/edit`;
+}
+
+function deleteAlert(alertId) {
+    if (confirm('确定要删除这个预警吗？')) {
+        // TODO: 实现删除预警功能
+        console.log('Deleting alert:', alertId);
+    }
+}
+
+// 添加CSS动画
+const style = document.createElement('style');
+style.textContent = `
+    .fadeInUp {
+        animation: fadeInUp 0.6s ease-out forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %} 

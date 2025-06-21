@@ -2,10 +2,12 @@ mod config;
 mod models;
 mod services;
 mod templates;
+mod handlers;
 
 use crate::models::{AlertResponse, CreateAlertRequest};
 use crate::services::{Database, EmailNotifier, PriceService};
 use crate::templates::{AlertFormTemplate, IndexTemplate};
+use crate::handlers::{dashboard_handler, market_handler, strategy_handler};
 use askama::Template;
 use axum::{
     extract::{Json, Path, State},
@@ -20,9 +22,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // 应用程序状态
 #[derive(Clone)]
-struct AppState {
-    db: Arc<Database>,
-    email_notifier: Arc<EmailNotifier>,
+pub struct AppState {
+    pub db: Arc<Database>,
+    pub email_notifier: Arc<EmailNotifier>,
 }
 
 #[tokio::main]
@@ -66,7 +68,12 @@ async fn main() -> anyhow::Result<()> {
 
     // Build our application with a route
     let app = Router::new()
-        .route("/", get(index_page))
+        // 多市场UI路由
+        .route("/", get(dashboard_handler))
+        .route("/market/:market", get(market_handler))
+        .route("/strategy", get(strategy_handler))
+        // 原有路由保持兼容
+        .route("/alerts", get(index_page))
         .route("/alerts/new", get(new_alert_form))
         .route("/alerts/:id/edit", get(edit_alert_form))
         .route("/api/alerts", get(list_alerts).post(create_alert))
