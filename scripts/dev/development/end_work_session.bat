@@ -39,7 +39,7 @@ echo [5/5] Work Session Summary...
 echo.
 echo Please update the following files:
 echo - tasks/current-tasks.md (mark completed tasks)
-echo - docs/development-status.md (update progress)
+echo - docs/dev/development-status.md (update progress)
 echo.
 echo Recommended next steps:
 echo 1. Review and commit your changes

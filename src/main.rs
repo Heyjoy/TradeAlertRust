@@ -1,11 +1,10 @@
 mod config;
-mod db;
-mod email;
-mod fetcher;
 mod models;
+mod services;
 mod templates;
 
 use crate::models::{AlertResponse, CreateAlertRequest};
+use crate::services::{Database, EmailNotifier, PriceService};
 use crate::templates::{AlertFormTemplate, IndexTemplate};
 use askama::Template;
 use axum::{
@@ -22,8 +21,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 // 应用程序状态
 #[derive(Clone)]
 struct AppState {
-    db: Arc<db::Database>,
-    email_notifier: Arc<email::EmailNotifier>,
+    db: Arc<Database>,
+    email_notifier: Arc<EmailNotifier>,
 }
 
 #[tokio::main]
@@ -42,13 +41,13 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Initialize database
-    let db = Arc::new(db::Database::new(&config.database.url).await?);
+    let db = Arc::new(Database::new(&config.database.url).await?);
 
     // Initialize email notifier
-    let email_notifier = Arc::new(email::EmailNotifier::new(config.email.clone())?);
+    let email_notifier = Arc::new(EmailNotifier::new(config.email.clone())?);
 
     // Initialize price service with Arc
-    let price_service = Arc::new(fetcher::PriceService::new(
+    let price_service = Arc::new(PriceService::new(
         db.pool().clone(),
         &config.price_fetcher,
         email_notifier.clone(),

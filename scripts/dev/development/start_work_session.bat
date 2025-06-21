@@ -6,7 +6,7 @@ echo ========================================
 
 echo.
 echo [1/4] Environment Check...
-call scripts\development\check_env.bat
+call scripts\dev\development\check_env.bat
 if %errorlevel% neq 0 (
     echo ERROR: Environment check failed!
     pause
@@ -51,6 +51,6 @@ echo - dw  : Documentation Writer
 echo - qa  : QA Engineer
 echo.
 echo Current Tasks: See tasks/current-tasks.md
-echo Project Status: See docs/development-status.md
+echo Project Status: See docs/dev/development-status.md
 echo.
 pause 

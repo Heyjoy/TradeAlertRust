@@ -1,5 +1,5 @@
 use crate::config::PriceFetcherConfig;
-use crate::email::EmailNotifier;
+use crate::services::email::EmailNotifier;
 use anyhow::Result;
 use chrono::Utc;
 

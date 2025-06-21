@@ -17,6 +17,8 @@
 # Configuration files with sensitive data
 /config.toml
 /config.local.toml
+/config/config.toml
+/config/config.local.toml
 
 # Logs
 *.log
