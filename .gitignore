@@ -41,7 +41,8 @@ ehthumbs.db
 Thumbs.db
 
 # SQLx offline query cache (contains compiled queries)
-/.sqlx/
+# Note: We commit .sqlx/ for Railway deployment compatibility
+# /.sqlx/
 
 # Temporary files
 *.tmp

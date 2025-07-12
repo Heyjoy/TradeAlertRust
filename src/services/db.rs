@@ -47,7 +47,7 @@ impl Database {
         let price = request.price;
         let notification_email = request.notification_email.as_deref();
         let user_id = &request.user_id;
-        
+
         let alert = sqlx::query_as!(
             Alert,
             r#"

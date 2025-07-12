@@ -33,14 +33,14 @@ pub enum StrategySignal {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LimitUpPullbackSignal {
     pub symbol: String,
-    pub signal_strength: u8,          // 1-5 信号强度
-    pub limit_up_date: String,        // 涨停日期
-    pub limit_up_price: f64,          // 涨停价格
-    pub pullback_price: f64,          // 当前回踩价格
-    pub volume_shrink_ratio: f64,     // 缩量比例
-    pub support_level: f64,           // 支撑位
+    pub signal_strength: u8,      // 1-5 信号强度
+    pub limit_up_date: String,    // 涨停日期
+    pub limit_up_price: f64,      // 涨停价格
+    pub pullback_price: f64,      // 当前回踩价格
+    pub volume_shrink_ratio: f64, // 缩量比例
+    pub support_level: f64,       // 支撑位
     pub description: String,
-    pub key_levels: Vec<f64>,         // 关键价位
+    pub key_levels: Vec<f64>, // 关键价位
 }
 
 /// 底部突破信号
@@ -50,8 +50,8 @@ pub struct BottomBreakoutSignal {
     pub signal_strength: u8,
     pub breakout_price: f64,
     pub volume_ratio: f64,
-    pub ma_position: f64,             // 相对均线位置
-    pub resistance_level: f64,        // 突破的阻力位
+    pub ma_position: f64,      // 相对均线位置
+    pub resistance_level: f64, // 突破的阻力位
     pub description: String,
     pub key_levels: Vec<f64>,
 }
@@ -95,7 +95,7 @@ impl StrategyAnalyzer {
     /// 分析指定股票的策略信号
     pub async fn analyze_symbol(&self, symbol: &str) -> Result<Vec<StrategySignal>> {
         info!("开始分析股票策略信号: {}", symbol);
-        
+
         // 获取历史价格数据
         let prices = self.get_price_history(symbol, 250).await?;
         if prices.len() < 60 {
@@ -161,7 +161,10 @@ impl StrategyAnalyzer {
     }
 
     /// 涨停回踩分析
-    async fn analyze_limit_up_pullback(&self, prices: &[PriceData]) -> Result<Option<LimitUpPullbackSignal>> {
+    async fn analyze_limit_up_pullback(
+        &self,
+        prices: &[PriceData],
+    ) -> Result<Option<LimitUpPullbackSignal>> {
         if prices.len() < 10 {
             return Ok(None);
         }
@@ -191,9 +194,10 @@ impl StrategyAnalyzer {
 
         // 2. 检查当前是否回踩
         let current_price = prices.last().unwrap();
-        let is_pullback = current_price.close < limit_up.low_price.min(
-            prices[prices.len().saturating_sub(2)].close
-        );
+        let is_pullback = current_price.close
+            < limit_up
+                .low_price
+                .min(prices[prices.len().saturating_sub(2)].close);
 
         if !is_pullback {
             return Ok(None);
@@ -215,8 +219,12 @@ impl StrategyAnalyzer {
 
         // 5. 计算信号强度
         let mut strength = 3u8; // 基础强度
-        if volume_shrink_ratio < 0.3 { strength += 1; } // 深度缩量加分
-        if current_price.close > support_level { strength += 1; } // 仍在支撑位上方加分
+        if volume_shrink_ratio < 0.3 {
+            strength += 1;
+        } // 深度缩量加分
+        if current_price.close > support_level {
+            strength += 1;
+        } // 仍在支撑位上方加分
 
         let signal = LimitUpPullbackSignal {
             symbol: prices[0].date.clone(), // 这里应该传入symbol，临时用date代替
@@ -240,7 +248,10 @@ impl StrategyAnalyzer {
     }
 
     /// 底部突破分析
-    async fn analyze_bottom_breakout(&self, prices: &[PriceData]) -> Result<Option<BottomBreakoutSignal>> {
+    async fn analyze_bottom_breakout(
+        &self,
+        prices: &[PriceData],
+    ) -> Result<Option<BottomBreakoutSignal>> {
         if prices.len() < 120 {
             return Ok(None);
         }
@@ -251,7 +262,7 @@ impl StrategyAnalyzer {
         // 1. 检查是否为底部股票（接近长期均线）
         let ma120 = mas.ma120.unwrap_or(0.0);
         let ma250 = mas.ma250.unwrap_or(0.0);
-        
+
         if ma120 == 0.0 || ma250 == 0.0 {
             return Ok(None);
         }
@@ -266,27 +277,33 @@ impl StrategyAnalyzer {
         // 2. 检查放量突破
         let avg_volume = self.calculate_average_volume(prices, 30);
         let volume_ratio = current.volume as f64 / avg_volume;
-        
+
         if volume_ratio < 1.5 {
             return Ok(None); // 没有明显放量
         }
 
         // 3. 计算阻力位（60日高点）
-        let resistance_level = prices.iter()
+        let resistance_level = prices
+            .iter()
             .rev()
             .take(60)
             .map(|p| p.high)
             .fold(0.0, f64::max);
 
         // 4. 检查是否突破阻力位
-        if current.high <= resistance_level * 1.02 { // 需要突破2%以上
+        if current.high <= resistance_level * 1.02 {
+            // 需要突破2%以上
             return Ok(None);
         }
 
         // 5. 计算信号强度
         let mut strength = 3u8;
-        if volume_ratio > 2.0 { strength += 1; }
-        if current.close > resistance_level { strength += 1; }
+        if volume_ratio > 2.0 {
+            strength += 1;
+        }
+        if current.close > resistance_level {
+            strength += 1;
+        }
 
         let signal = BottomBreakoutSignal {
             symbol: current.date.clone(), // 临时用date代替symbol
@@ -297,9 +314,7 @@ impl StrategyAnalyzer {
             resistance_level,
             description: format!(
                 "底部突破：放量{:.1}倍突破{:.2}阻力位，当前价{:.2}",
-                volume_ratio,
-                resistance_level,
-                current.close
+                volume_ratio, resistance_level, current.close
             ),
             key_levels: vec![ma120, ma250, resistance_level],
         };
@@ -308,7 +323,10 @@ impl StrategyAnalyzer {
     }
 
     /// 技术指标分析
-    async fn analyze_technical_indicators(&self, prices: &[PriceData]) -> Result<Vec<TechnicalSignal>> {
+    async fn analyze_technical_indicators(
+        &self,
+        prices: &[PriceData],
+    ) -> Result<Vec<TechnicalSignal>> {
         let mut signals = Vec::new();
         let mas = self.calculate_moving_averages(prices);
         let current = prices.last().unwrap();
@@ -329,14 +347,18 @@ impl StrategyAnalyzer {
         // 2. 量价配合分析
         let volume_ma = self.calculate_average_volume(prices, 5);
         let volume_ratio = current.volume as f64 / volume_ma;
-        
+
         if volume_ratio > 1.5 && current.change_percent.unwrap_or(0.0) > 2.0 {
             signals.push(TechnicalSignal {
                 symbol: current.date.clone(),
                 indicator_name: "放量上涨".to_string(),
                 value: volume_ratio,
                 signal_strength: 3,
-                description: format!("放量{:.1}倍上涨{:.2}%", volume_ratio, current.change_percent.unwrap_or(0.0)),
+                description: format!(
+                    "放量{:.1}倍上涨{:.2}%",
+                    volume_ratio,
+                    current.change_percent.unwrap_or(0.0)
+                ),
             });
         }
 
@@ -361,11 +383,7 @@ impl StrategyAnalyzer {
             return None;
         }
 
-        let sum: f64 = prices.iter()
-            .rev()
-            .take(period)
-            .map(|p| p.close)
-            .sum();
+        let sum: f64 = prices.iter().rev().take(period).map(|p| p.close).sum();
 
         Some(sum / period as f64)
     }
@@ -376,7 +394,8 @@ impl StrategyAnalyzer {
             return prices.iter().map(|p| p.volume as f64).sum::<f64>() / prices.len() as f64;
         }
 
-        let sum: f64 = prices.iter()
+        let sum: f64 = prices
+            .iter()
             .rev()
             .take(period)
             .map(|p| p.volume as f64)

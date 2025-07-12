@@ -136,7 +136,7 @@ impl Config {
         if self.demo.enabled {
             self.database.url = "sqlite:data/demo_trade_alert.db".to_string();
             tracing::info!("演示模式已启用，使用演示数据库: {}", self.database.url);
-            
+
             // 演示模式强制禁用邮件
             if self.demo.disable_email {
                 self.email.enabled = false;

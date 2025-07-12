@@ -25,7 +25,20 @@ cargo sqlx migrate run
 
 # 生成查询缓存文件
 cargo sqlx prepare
+
+# 如果.sqlx/被gitignore忽略，需要先修改.gitignore
+# 注释掉: # /.sqlx/
 ```
+
+**⚠️ 常见问题**：如果提交时遇到 `paths are ignored by .gitignore`：
+```bash
+# 方法1：强制添加（临时）
+git add -f .sqlx/
+
+# 方法2：修改.gitignore（推荐）
+# 编辑.gitignore，注释掉 /.sqlx/ 这一行
+```
+
 将生成的`.sqlx/`目录提交到Git
 
 ### 2. **环境变量配置错误**

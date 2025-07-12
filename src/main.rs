@@ -19,8 +19,8 @@ use axum::{
     routing::{get, get_service},
     Router,
 };
-use tower_http::services::ServeDir;
 use std::sync::Arc;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -36,14 +36,14 @@ fn extract_user_id(headers: &HeaderMap) -> String {
             }
         }
     }
-    
+
     // 如果没有提供用户标识，生成一个基于IP的默认标识
     if let Some(forwarded_for) = headers.get("X-Forwarded-For") {
         if let Ok(ip) = forwarded_for.to_str() {
             return format!("user_{}", ip.replace(".", "_").replace(":", "_"));
         }
     }
-    
+
     // 最后的fallback
     "demo_user".to_string()
 }
@@ -129,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
 // 首页处理函数
 async fn index_page(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     let user_id = extract_user_id(&headers);
-    
+
     // 根据是否启用演示模式决定查询方式
     let alerts_result = if let Ok(config) = config::Config::load() {
         if config.demo.enabled {
@@ -142,7 +142,7 @@ async fn index_page(State(state): State<AppState>, headers: HeaderMap) -> impl I
     } else {
         state.db.list_alerts().await
     };
-    
+
     match alerts_result {
         Ok(alerts) => {
             let template = IndexTemplate::new(alerts);
@@ -173,7 +173,7 @@ async fn create_alert(
 ) -> impl IntoResponse {
     // 设置用户ID
     payload.user_id = extract_user_id(&headers);
-    
+
     // 演示模式检查用户预警数量限制
     if let Ok(config) = config::Config::load() {
         if config.demo.enabled {
@@ -181,8 +181,12 @@ async fn create_alert(
                 Ok(count) if count >= config.demo.max_alerts_per_user as i64 => {
                     return (
                         StatusCode::TOO_MANY_REQUESTS,
-                        format!("演示模式：每个用户最多只能创建{}个预警", config.demo.max_alerts_per_user)
-                    ).into_response();
+                        format!(
+                            "演示模式：每个用户最多只能创建{}个预警",
+                            config.demo.max_alerts_per_user
+                        ),
+                    )
+                        .into_response();
                 }
                 Err(e) => {
                     tracing::error!("Failed to count user alerts: {}", e);
@@ -191,7 +195,7 @@ async fn create_alert(
             }
         }
     }
-    
+
     match state.db.create_alert(&payload).await {
         Ok(alert) => (StatusCode::CREATED, Json(AlertResponse::from(alert))).into_response(),
         Err(e) => {
@@ -201,12 +205,9 @@ async fn create_alert(
     }
 }
 
-async fn list_alerts(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> impl IntoResponse {
+async fn list_alerts(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     let user_id = extract_user_id(&headers);
-    
+
     // 根据是否启用演示模式决定查询方式
     let alerts_result = if let Ok(config) = config::Config::load() {
         if config.demo.enabled {
@@ -219,7 +220,7 @@ async fn list_alerts(
     } else {
         state.db.list_alerts().await
     };
-    
+
     match alerts_result {
         Ok(alerts) => Json(
             alerts
@@ -241,7 +242,7 @@ async fn get_alert(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let user_id = extract_user_id(&headers);
-    
+
     // 根据是否启用演示模式决定查询方式
     let alert_result = if let Ok(config) = config::Config::load() {
         if config.demo.enabled {
@@ -254,7 +255,7 @@ async fn get_alert(
     } else {
         state.db.get_alert(id).await
     };
-    
+
     match alert_result {
         Ok(Some(alert)) => Json(AlertResponse::from(alert)).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
@@ -271,7 +272,7 @@ async fn delete_alert(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let user_id = extract_user_id(&headers);
-    
+
     // 根据是否启用演示模式决定删除方式
     let delete_result = if let Ok(config) = config::Config::load() {
         if config.demo.enabled {
@@ -284,7 +285,7 @@ async fn delete_alert(
     } else {
         state.db.delete_alert(id).await
     };
-    
+
     match delete_result {
         Ok(true) => StatusCode::NO_CONTENT.into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
@@ -303,7 +304,7 @@ async fn update_alert(
 ) -> impl IntoResponse {
     let user_id = extract_user_id(&headers);
     payload.user_id = user_id.clone();
-    
+
     // 演示模式检查：只能更新自己的预警
     if let Ok(config) = config::Config::load() {
         if config.demo.enabled {
@@ -314,13 +315,14 @@ async fn update_alert(
                 }
                 Err(e) => {
                     tracing::error!("Failed to check alert ownership: {}", e);
-                    return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to check alert").into_response();
+                    return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to check alert")
+                        .into_response();
                 }
                 _ => {}
             }
         }
     }
-    
+
     match state.db.update_alert(id, &payload).await {
         Ok(Some(alert)) => Json(AlertResponse::from(alert)).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
@@ -427,16 +429,27 @@ fn detect_market_info(symbol: &str) -> (String, String, String) {
     if symbol.ends_with(".SZ") || symbol.ends_with(".SS") || symbol.ends_with(".SH") {
         // A股市场
         ("cn".to_string(), "CNY".to_string(), "¥".to_string())
-    } else if symbol.contains("-USD") || symbol.contains("-USDT") || 
-              symbol.contains("BTC") || symbol.contains("ETH") || 
-              symbol.contains("USDT") || symbol.contains("BNB") ||
-              symbol.contains("ADA") || symbol.contains("SOL") ||
-              symbol.contains("DOGE") || symbol.contains("DOT") ||
-              symbol.contains("AVAX") || symbol.contains("SHIB") ||
-              symbol.contains("LTC") || symbol.contains("LINK") ||
-              symbol.contains("UNI") || symbol.contains("MATIC") ||
-              symbol.contains("TRX") || symbol.contains("USDC") ||
-              symbol.contains("DAI") || symbol.contains("BUSD") {
+    } else if symbol.contains("-USD")
+        || symbol.contains("-USDT")
+        || symbol.contains("BTC")
+        || symbol.contains("ETH")
+        || symbol.contains("USDT")
+        || symbol.contains("BNB")
+        || symbol.contains("ADA")
+        || symbol.contains("SOL")
+        || symbol.contains("DOGE")
+        || symbol.contains("DOT")
+        || symbol.contains("AVAX")
+        || symbol.contains("SHIB")
+        || symbol.contains("LTC")
+        || symbol.contains("LINK")
+        || symbol.contains("UNI")
+        || symbol.contains("MATIC")
+        || symbol.contains("TRX")
+        || symbol.contains("USDC")
+        || symbol.contains("DAI")
+        || symbol.contains("BUSD")
+    {
         // 加密货币市场 - 根据交易对确定计价货币
         if symbol.contains("-USD") {
             ("crypto".to_string(), "USD".to_string(), "$".to_string())

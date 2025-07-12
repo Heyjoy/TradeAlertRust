@@ -1,0 +1,51 @@
+# Development files
+target/debug/
+target/tmp/
+.git/
+.gitignore
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Scripts
+scripts/
+
+# Test files
+test_*.html
+tests/
+
+# IDE and editor files
+.vscode/
+.cursor/
+.claude/
+.idea/
+*.swp
+*.swo
+
+# Task management
+tasks/
+TODO*.md
+
+# Environment files (keep only .env.example)
+.env
+.env.local
+config/.env.*
+!config/_env.example
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+node_modules/
+
+# Temporary files
+tmp/
+temp/
+
+# Build artifacts that aren't needed
+target/debug/
+Cargo.lock

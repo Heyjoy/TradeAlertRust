@@ -1,2 +1,16 @@
 [start]
-cmd = "bin/trade_alert_rust" 
+cmd = "bin/trade_alert_rust"
+
+[build]
+# Optimize build by excluding unnecessary files
+ignoredPaths = [
+  "docs/",
+  "scripts/",
+  "test_*.html",
+  "*.md",
+  "target/debug/",
+  ".git/",
+  ".cursor/",
+  ".claude/",
+  "tasks/"
+] 

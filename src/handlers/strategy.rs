@@ -1,5 +1,5 @@
-use crate::services::{StrategyAnalyzer, StrategySignal as AnalyzerSignal};
 use crate::handlers::market::AppState;
+use crate::services::{StrategyAnalyzer, StrategySignal as AnalyzerSignal};
 use askama::Template;
 use axum::{
     extract::{Path, State},
@@ -30,7 +30,7 @@ pub struct StrategyTemplate {
 pub async fn strategy_handler(State(app_state): State<AppState>) -> impl IntoResponse {
     // 使用真实的策略分析数据
     let analyzer = StrategyAnalyzer::new(app_state.db.pool().clone());
-    
+
     // 获取最近的策略信号
     let recent_signals = match analyzer.get_recent_signals(20).await {
         Ok(signals) => signals,
@@ -43,7 +43,7 @@ pub async fn strategy_handler(State(app_state): State<AppState>) -> impl IntoRes
 
     for (symbol, signal) in recent_signals {
         let template_signal = convert_analyzer_signal_to_template(symbol, signal);
-        
+
         // 根据股票代码判断市场类型
         if is_cn_stock(&template_signal.symbol) {
             cn_signals.push(template_signal);
@@ -105,7 +105,7 @@ pub async fn analyze_symbol_strategy(
     State(app_state): State<AppState>,
 ) -> Result<Json<Vec<AnalyzerSignal>>, StatusCode> {
     let analyzer = StrategyAnalyzer::new(app_state.db.pool().clone());
-    
+
     match analyzer.analyze_symbol(&symbol).await {
         Ok(signals) => Ok(Json(signals)),
         Err(e) => {
@@ -120,7 +120,7 @@ pub async fn get_strategy_signals(
     State(app_state): State<AppState>,
 ) -> Result<Json<Vec<(String, AnalyzerSignal)>>, StatusCode> {
     let analyzer = StrategyAnalyzer::new(app_state.db.pool().clone());
-    
+
     match analyzer.get_recent_signals(50).await {
         Ok(signals) => Ok(Json(signals)),
         Err(e) => {
@@ -135,7 +135,12 @@ fn convert_analyzer_signal_to_template(symbol: String, signal: AnalyzerSignal) -
     match signal {
         AnalyzerSignal::LimitUpPullback(s) => StrategySignal {
             symbol: symbol.clone(),
-            market: if is_cn_stock(&symbol) { "🇨🇳" } else { "🇺🇸" }.to_string(),
+            market: if is_cn_stock(&symbol) {
+                "🇨🇳"
+            } else {
+                "🇺🇸"
+            }
+            .to_string(),
             signal_type: "⚠️ 涨停回踩".to_string(),
             price: s.pullback_price,
             description: s.description,
@@ -143,7 +148,12 @@ fn convert_analyzer_signal_to_template(symbol: String, signal: AnalyzerSignal) -
         },
         AnalyzerSignal::BottomBreakout(s) => StrategySignal {
             symbol: symbol.clone(),
-            market: if is_cn_stock(&symbol) { "🇨🇳" } else { "🇺🇸" }.to_string(),
+            market: if is_cn_stock(&symbol) {
+                "🇨🇳"
+            } else {
+                "🇺🇸"
+            }
+            .to_string(),
             signal_type: "✅ 底部突破".to_string(),
             price: s.breakout_price,
             description: s.description,
@@ -151,7 +161,12 @@ fn convert_analyzer_signal_to_template(symbol: String, signal: AnalyzerSignal) -
         },
         AnalyzerSignal::TechnicalIndicator(s) => StrategySignal {
             symbol: symbol.clone(),
-            market: if is_cn_stock(&symbol) { "🇨🇳" } else { "🇺🇸" }.to_string(),
+            market: if is_cn_stock(&symbol) {
+                "🇨🇳"
+            } else {
+                "🇺🇸"
+            }
+            .to_string(),
             signal_type: format!("📊 {}", s.indicator_name),
             price: s.value,
             description: s.description,
@@ -163,6 +178,7 @@ fn convert_analyzer_signal_to_template(symbol: String, signal: AnalyzerSignal) -
 /// 判断是否为A股股票
 fn is_cn_stock(symbol: &str) -> bool {
     // 简单的A股股票代码判断
-    symbol.contains(".SZ") || symbol.contains(".SH") || 
-    symbol.len() == 6 && symbol.chars().all(|c| c.is_ascii_digit())
+    symbol.contains(".SZ")
+        || symbol.contains(".SH")
+        || symbol.len() == 6 && symbol.chars().all(|c| c.is_ascii_digit())
 }
