@@ -36,6 +36,10 @@ impl Database {
         Ok(Self { pool })
     }
 
+    pub fn pool(&self) -> &SqlitePool {
+        &self.pool
+    }
+
     pub async fn create_alert(&self, request: &CreateAlertRequest) -> Result<Alert> {
         let symbol = &request.symbol;
         let condition_str = request.condition.to_string().to_lowercase();
@@ -233,10 +237,6 @@ impl Database {
         } else {
             Ok(None)
         }
-    }
-
-    pub fn pool(&self) -> &SqlitePool {
-        &self.pool
     }
 
     // 演示模式相关功能

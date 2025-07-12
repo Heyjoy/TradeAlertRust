@@ -7,7 +7,14 @@
       "Bash(rustc:*)",
       "Bash(ls:*)",
       "Bash(~/.cargo/bin/cargo build)",
-      "Bash(export:*)"
+      "Bash(export:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3:*)",
+      "Bash(.scriptsdev_migrate.ps1)",
+      "Bash(./scripts/dev_migrate.ps1)",
+      "Bash(sqlx migrate:*)",
+      "Bash(grep:*)",
+      "Bash(timeout 10s cargo run)"
     ],
     "deny": []
   }
