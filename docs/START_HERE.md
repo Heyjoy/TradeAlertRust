@@ -45,6 +45,7 @@
 #### 如果遇到编译或技术问题
 - **[故障排除指南](troubleshooting/README.md)** - 常见问题快速解决
 - **[SQLx编译问题](troubleshooting/sqlx-compilation-issues.md)** - SQLx相关错误详细解决方案
+- **[数据库迁移深度解析](dev/database-migration-guide.md)** - 数据库迁移系统架构原理 🆕
 - **[开发环境检查](../CLAUDE.md#常见问题解决方案)** - 环境配置检查清单
 
 #### 如果讨论产品规划

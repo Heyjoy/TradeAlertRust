@@ -75,6 +75,8 @@
 | [启动问题](troubleshooting/startup-issues.md) | 运行时问题 | ✅ 最新 |
 | [SQLx编译问题](troubleshooting/sqlx-compilation-issues.md) | 数据库查询编译错误详解 | 🆕 2025-07-12 |
 | [SQLx调试心得](dev/sqlx-debugging-experience.md) | 实际问题解决经验沉淀 | 🆕 2025-07-12 |
+| [数据库迁移深度解析](dev/database-migration-guide.md) | 迁移系统架构原理和SQLx编译时检查机制 | 🆕 2025-07-12 |
+| [Railway部署问题](troubleshooting/railway-deployment-issues.md) | Railway部署失败原因分析和本地模拟 | 🆕 2025-07-12 |
 
 ## 🎯 **按角色查找文档**
 
