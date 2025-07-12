@@ -7,10 +7,10 @@ mod handlers;
 use crate::models::{AlertResponse, CreateAlertRequest};
 use crate::services::{Database, EmailNotifier, PriceService};
 use crate::templates::{AlertFormTemplate, IndexTemplate};
-use crate::handlers::{dashboard_handler, market_handler, strategy_handler};
+use crate::handlers::{market::{dashboard_handler, market_handler, AppState}, strategy_handler};
 use askama::Template;
 use axum::{
-    extract::{Json, Path, State},
+    extract::{Json, Path, State, Query},
     http::StatusCode,
     response::{Html, IntoResponse},
     routing::get,
@@ -20,12 +20,7 @@ use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-// 应用程序状态
-#[derive(Clone)]
-pub struct AppState {
-    pub db: Arc<Database>,
-    pub email_notifier: Arc<EmailNotifier>,
-}
+// 使用handlers模块中的AppState定义
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -83,7 +78,13 @@ async fn main() -> anyhow::Result<()> {
         )
         .route("/api/prices/:symbol", get(get_price_history))
         .route("/api/prices/:symbol/latest", get(get_latest_price))
+        .route("/api/prices/:symbol/history", get(get_price_history))
         .route("/api/test-email", get(send_test_email))
+        // 新增股票搜索API
+        .route("/api/stocks/search", get(search_stocks))
+        .route("/api/stocks/markets", get(get_markets))
+        // 股票价格API
+        .route("/api/stock-price/:symbol", get(handlers::market::get_stock_price))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -279,11 +280,28 @@ async fn get_price_history(
     }
 }
 
+/// 检测股票代码所属市场并返回货币信息
+fn detect_market_info(symbol: &str) -> (String, String, String) {
+    // 返回 (market, currency, currency_symbol)
+    if symbol.ends_with(".SZ") || symbol.ends_with(".SS") || symbol.ends_with(".SH") {
+        // A股市场
+        ("cn".to_string(), "CNY".to_string(), "¥".to_string())
+    } else if symbol.contains("BTC") || symbol.contains("ETH") || symbol.contains("USDT") {
+        // 加密货币市场
+        ("crypto".to_string(), "USDT".to_string(), "".to_string())
+    } else {
+        // 默认美股市场
+        ("us".to_string(), "USD".to_string(), "$".to_string())
+    }
+}
+
 // 获取股票最新价格
 async fn get_latest_price(
     State(state): State<AppState>,
     Path(symbol): Path<String>,
 ) -> impl IntoResponse {
+    let (market, currency, currency_symbol) = detect_market_info(&symbol);
+    
     let result = sqlx::query!(
         r#"
         SELECT close_price as price, volume, date, created_at
@@ -304,6 +322,9 @@ async fn get_latest_price(
             "volume": row.volume,
             "date": row.date,
             "created_at": row.created_at,
+            "market": market,
+            "currency": currency,
+            "currency_symbol": currency_symbol,
             "name_en": null // 数据库无公司名，返回null
         }))
         .into_response(),
@@ -336,6 +357,9 @@ async fn get_latest_price(
                         "volume": volume,
                         "date": today,
                         "created_at": now,
+                        "market": market,
+                        "currency": currency,
+                        "currency_symbol": currency_symbol,
                         "name_en": name_en
                     }))
                     .into_response()
@@ -446,4 +470,188 @@ async fn send_test_email(State(state): State<AppState>) -> impl IntoResponse {
             .into_response()
         }
     }
+}
+
+/// 股票搜索API
+async fn search_stocks(
+    State(state): State<AppState>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> impl IntoResponse {
+    let query = params.get("q").map(|s| s.as_str()).unwrap_or("");
+    let market = params.get("market").map(|s| s.as_str()).unwrap_or("all");
+    
+    if query.is_empty() {
+        return Json(serde_json::json!({
+            "results": [],
+            "message": "请输入搜索关键词"
+        })).into_response();
+    }
+    
+    let mut results = Vec::new();
+    
+    // 搜索A股
+    if market == "all" || market == "cn" {
+        if let Ok(cn_results) = search_cn_stocks(&state, query).await {
+            results.extend(cn_results);
+        }
+    }
+    
+    // 搜索美股
+    if market == "all" || market == "us" {
+        if let Ok(us_results) = search_us_stocks(&state, query).await {
+            results.extend(us_results);
+        }
+    }
+    
+    // 限制返回结果数量
+    results.truncate(10);
+    
+    Json(serde_json::json!({
+        "results": results,
+        "total": results.len()
+    })).into_response()
+}
+
+/// 获取支持的市场列表
+async fn get_markets() -> impl IntoResponse {
+    Json(serde_json::json!({
+        "markets": [
+            {
+                "code": "us",
+                "name": "美股",
+                "name_en": "US Stocks",
+                "symbol_format": "AAPL",
+                "currency": "USD",
+                "currency_symbol": "$"
+            },
+            {
+                "code": "cn", 
+                "name": "A股",
+                "name_en": "China A-Shares",
+                "symbol_format": "000001.SZ",
+                "currency": "CNY",
+                "currency_symbol": "¥"
+            },
+            {
+                "code": "crypto",
+                "name": "加密货币", 
+                "name_en": "Cryptocurrency",
+                "symbol_format": "BTC",
+                "currency": "USDT",
+                "currency_symbol": ""
+            }
+        ]
+    })).into_response()
+}
+
+/// 搜索A股股票
+async fn search_cn_stocks(state: &AppState, query: &str) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    let search_pattern = format!("%{}%", query);
+    
+    let results = sqlx::query!(
+        r#"
+        SELECT symbol, code, exchange, name_cn, name_en, pinyin, pinyin_short, industry
+        FROM cn_stocks 
+        WHERE status = 'active' 
+        AND (
+            symbol LIKE ?1 OR 
+            code LIKE ?1 OR 
+            name_cn LIKE ?1 OR 
+            pinyin LIKE ?1 OR 
+            pinyin_short LIKE ?1
+        )
+        ORDER BY 
+            CASE 
+                WHEN symbol = ?2 THEN 1
+                WHEN code = ?2 THEN 2
+                WHEN name_cn = ?2 THEN 3
+                WHEN symbol LIKE ?1 THEN 4
+                WHEN code LIKE ?1 THEN 5
+                WHEN name_cn LIKE ?1 THEN 6
+                ELSE 7
+            END
+        LIMIT 5
+        "#,
+        search_pattern,
+        query
+    )
+    .fetch_all(state.db.pool())
+    .await?;
+    
+    let stocks: Vec<serde_json::Value> = results
+        .into_iter()
+        .map(|row| {
+            serde_json::json!({
+                "symbol": row.symbol,
+                "code": row.code,
+                "exchange": row.exchange,
+                "name_cn": row.name_cn,
+                "name_en": row.name_en,
+                "pinyin": row.pinyin,
+                "pinyin_short": row.pinyin_short,
+                "industry": row.industry,
+                "market": "cn",
+                "display_name": format!("{} ({})", row.name_cn, row.symbol),
+                "search_text": format!("{} {} {} {}", row.symbol, row.name_cn, row.pinyin, row.pinyin_short)
+            })
+        })
+        .collect();
+    
+    Ok(stocks)
+}
+
+/// 搜索美股股票
+async fn search_us_stocks(state: &AppState, query: &str) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    let search_pattern = format!("%{}%", query.to_uppercase());
+    let search_pattern_cn = format!("%{}%", query);
+    
+    let results = sqlx::query!(
+        r#"
+        SELECT symbol, name_en, name_cn, sector, exchange
+        FROM us_stocks 
+        WHERE status = 'active' 
+        AND (
+            UPPER(symbol) LIKE ?1 OR 
+            UPPER(name_en) LIKE ?1 OR 
+            name_cn LIKE ?2
+        )
+        ORDER BY 
+            CASE 
+                WHEN UPPER(symbol) = UPPER(?3) THEN 1
+                WHEN UPPER(symbol) LIKE ?1 THEN 2
+                WHEN UPPER(name_en) LIKE ?1 THEN 3
+                ELSE 4
+            END
+        LIMIT 5
+        "#,
+        search_pattern,
+        search_pattern_cn,
+        query
+    )
+    .fetch_all(state.db.pool())
+    .await?;
+    
+    let stocks: Vec<serde_json::Value> = results
+        .into_iter()
+        .map(|row| {
+            let display_name = if let Some(name_cn) = &row.name_cn {
+                format!("{} {} ({})", row.symbol, name_cn, row.name_en)
+            } else {
+                format!("{} ({})", row.symbol, row.name_en)
+            };
+            
+            serde_json::json!({
+                "symbol": row.symbol,
+                "name_en": row.name_en,
+                "name_cn": row.name_cn,
+                "sector": row.sector,
+                "exchange": row.exchange,
+                "market": "us",
+                "display_name": display_name,
+                "search_text": format!("{} {} {}", row.symbol, row.name_en, row.name_cn.unwrap_or_default())
+            })
+        })
+        .collect();
+    
+    Ok(stocks)
 }

@@ -302,7 +302,7 @@
                         <div class="alert-info-row">
                         <div class="alert-info-item">
                             <i class="fas fa-bullseye"></i>
-                                <span class="target-price">目标: {{ alert.condition }} ${{ alert.price }}</span>
+                                <span class="target-price">目标: {{ alert.condition }} <span class="currency-symbol" data-symbol="{{ alert.symbol }}">$</span>{{ alert.price }}</span>
                         </div>
                         <div class="alert-info-item">
                             <i class="fas fa-clock"></i>
@@ -368,7 +368,84 @@
 let refreshInterval;
 let lastUpdateTime = new Date();
 
+// 更新所有股票名称
+function updateAllStockNames() {
+    console.log('updateAllStockNames called');
+    const alertCards = $('.alert-card');
+    console.log('Found alert cards:', alertCards.length);
+    
+    alertCards.each(function(index) {
+        const alertCard = $(this);
+        const symbol = alertCard.data('symbol');
+        console.log(`Card ${index}: symbol = ${symbol}`);
+        
+        if (symbol) {
+            console.log('Updating stock name for:', symbol);
+            updateStockNameForCard(alertCard, symbol);
+        } else {
+            console.log('No symbol found for card', index);
+        }
+    });
+}
+
+// 更新股票名称显示
+function updateStockName(priceElement, symbol) {
+    const alertCard = priceElement.closest('.alert-card');
+    updateStockNameForCard(alertCard, symbol);
+}
+
+function updateStockNameForCard(alertCard, symbol) {
+    console.log(`updateStockNameForCard called with symbol: ${symbol}`);
+    const titleElement = alertCard.find('.card-title');
+    console.log('Found title element:', titleElement.length);
+    
+    // 先测试一个简单的更新
+    titleElement.html(`<i class="fas fa-chart-line me-2"></i>测试-${symbol}`);
+    console.log('Updated title to test value');
+    
+    fetch(`/api/stocks/search?q=${symbol}`)
+        .then(response => {
+            console.log('API response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Stock search response for', symbol, ':', data);
+            if (data.results && data.results.length > 0) {
+                const stock = data.results[0];
+                let displayName;
+                
+                if (symbol.includes('.SZ') || symbol.includes('.SH')) {
+                    // A-shares: 显示中文名(代码)
+                    displayName = stock.name_cn ? `${stock.name_cn}(${symbol})` : symbol;
+                } else {
+                    // US stocks: 显示中文名(代码) 或 英文名(代码)
+                    const name = stock.name_cn || stock.name_en || symbol;
+                    displayName = `${name}(${symbol})`;
+                }
+                
+                // 更新显示
+                titleElement.html(`<i class="fas fa-chart-line me-2"></i>${displayName}`);
+                console.log(`Updated stock name to: ${displayName}`);
+            } else {
+                console.log('No results found for symbol:', symbol);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching stock name for', symbol, ':', error);
+        });
+}
+
 $(document).ready(function() {
+    console.log('Page loaded, starting initialization...');
+    alert('JavaScript is working!'); // 临时测试
+    
+    // 初始化货币符号
+    initializeCurrencySymbols();
+    
+    // 立即更新所有股票名称
+    console.log('About to update all stock names...');
+    updateAllStockNames();
+    
     // 加载所有股票的当前价格
     loadAllPrices();
     
@@ -394,35 +471,49 @@ function loadAllPrices() {
     console.log('Refreshing all prices...'); // 调试日志
     
     // 更新刷新按钮状态
-    $('.refresh-button i').addClass('fa-spin');
+    const refreshButton = $('.refresh-button i');
+    refreshButton.addClass('fa-spin');
     
-    let loadedCount = 0;
-    const totalCount = $('.current-price').length;
+    const priceElements = $('.current-price');
+    let completedRequests = 0;
+    const totalRequests = priceElements.length;
     
-    $('.current-price').each(function() {
-        const symbol = $(this).data('symbol');
-        if (symbol) {
-            loadPrice(symbol, $(this), function() {
-                loadedCount++;
-                if (loadedCount === totalCount) {
-                    $('.refresh-button i').removeClass('fa-spin');
-                    lastUpdateTime = new Date();
-                    showUpdateNotification();
-                }
-            });
-        }
+    if (totalRequests === 0) {
+        refreshButton.removeClass('fa-spin');
+        return;
+    }
+    
+    priceElements.each(function() {
+        const priceElement = $(this);
+        const symbol = priceElement.data('symbol');
+        const target = parseFloat(priceElement.data('target'));
+        const condition = priceElement.data('condition');
+        
+        // 同时更新股票名称显示
+        updateStockName(priceElement, symbol);
+        
+        loadPrice(symbol, target, condition, priceElement, function() {
+            completedRequests++;
+            if (completedRequests === totalRequests) {
+                refreshButton.removeClass('fa-spin');
+                lastUpdateTime = new Date();
+                showUpdateNotification();
+            }
+        });
     });
 }
 
-function loadPrice(symbol, priceElement, callback) {
+function loadPrice(symbol, target, condition, priceElement, callback) {
     // 添加加载状态
     priceElement.addClass('loading');
     
     $.get(`/api/prices/${symbol}/latest`)
         .done(function(data) {
             const price = parseFloat(data.price);
-            const target = parseFloat(priceElement.data('target'));
-            const condition = priceElement.data('condition');
+            
+            // 获取货币符号信息
+            const currencySymbol = data.currency_symbol || '$';
+            const market = data.market || 'us';
             
             // 检查价格是否有变化
             const oldPrice = priceElement.data('current-price') || 0;
@@ -431,16 +522,20 @@ function loadPrice(symbol, priceElement, callback) {
             if (priceChanged) {
                 // 价格变化时添加动画效果
                 priceElement.addClass('price-updated');
-                setTimeout(() => priceElement.removeClass('price-updated'), 2000);
+                setTimeout(function() { 
+                    priceElement.removeClass('price-updated'); 
+                }, 2000);
             }
             
-            // 更新价格显示
-            priceElement.html(`$${price.toFixed(2)}`);
+            // 更新价格显示 - 使用动态货币符号
+            priceElement.html(`${currencySymbol}${price.toFixed(2)}`);
             priceElement.data('current-price', price);
+            priceElement.data('currency-symbol', currencySymbol);
+            priceElement.data('market', market);
             
             // 计算价格差距并显示状态
             const gapElement = priceElement.siblings('.price-gap');
-            updatePriceGap(gapElement, price, target, condition);
+            updatePriceGap(gapElement, price, target, condition, currencySymbol);
             
             // 获取对应的预警信息来判断状态
             const alertCard = priceElement.closest('.alert-card');
@@ -456,9 +551,12 @@ function loadPrice(symbol, priceElement, callback) {
         });
 }
 
-function updatePriceGap(gapElement, currentPrice, targetPrice, condition) {
+function updatePriceGap(gapElement, currentPrice, targetPrice, condition, currencySymbol) {
     const gap = Math.abs(currentPrice - targetPrice);
     const percentage = (gap / targetPrice * 100).toFixed(1);
+    
+    // 使用传入的货币符号，如果没有则默认为$
+    const symbol = currencySymbol || '$';
     
     let gapText = '';
     let gapClass = '';
@@ -469,13 +567,13 @@ function updatePriceGap(gapElement, currentPrice, targetPrice, condition) {
             gapText = '已达到';
             gapClass = 'very-close';
         } else if (diff <= targetPrice * 0.02) { // 2%以内
-            gapText = `还差 $${diff.toFixed(2)}`;
+            gapText = `还差 ${symbol}${diff.toFixed(2)}`;
             gapClass = 'very-close';
         } else if (diff <= targetPrice * 0.05) { // 5%以内
-            gapText = `还差 $${diff.toFixed(2)}`;
+            gapText = `还差 ${symbol}${diff.toFixed(2)}`;
             gapClass = 'close';
         } else {
-            gapText = `还差 $${diff.toFixed(2)}`;
+            gapText = `还差 ${symbol}${diff.toFixed(2)}`;
             gapClass = 'far';
         }
     } else { // Below
@@ -484,13 +582,13 @@ function updatePriceGap(gapElement, currentPrice, targetPrice, condition) {
             gapText = '已达到';
             gapClass = 'very-close';
         } else if (diff <= targetPrice * 0.02) { // 2%以内
-            gapText = `超出 $${diff.toFixed(2)}`;
+            gapText = `超出 ${symbol}${diff.toFixed(2)}`;
             gapClass = 'very-close';
         } else if (diff <= targetPrice * 0.05) { // 5%以内
-            gapText = `超出 $${diff.toFixed(2)}`;
+            gapText = `超出 ${symbol}${diff.toFixed(2)}`;
             gapClass = 'close';
         } else {
-            gapText = `超出 $${diff.toFixed(2)}`;
+            gapText = `超出 ${symbol}${diff.toFixed(2)}`;
             gapClass = 'far';
         }
     }
@@ -508,7 +606,7 @@ function updatePriceStatus(alertCard, currentPrice, targetPrice, condition) {
     } else {
         alertCard.removeClass('alert-triggered');
     }
-    }
+}
 
 function updateLastRefreshTime() {
     const now = new Date();
@@ -595,5 +693,29 @@ function deleteAlert(alertId) {
 function refreshAlerts() {
     loadAllPrices();
 }
+
+// 初始化静态货币符号
+function initializeCurrencySymbols() {
+    $('.currency-symbol').each(function() {
+        const symbol = $(this).data('symbol');
+        if (symbol) {
+            const currencySymbol = getCurrencySymbol(symbol);
+            $(this).text(currencySymbol);
+        }
+    });
+}
+
+// 根据股票代码获取货币符号
+function getCurrencySymbol(symbol) {
+    if (symbol.endsWith('.SZ') || symbol.endsWith('.SS') || symbol.endsWith('.SH')) {
+        return '¥';
+    } else if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT')) {
+        return '';
+    } else {
+        return '$';
+    }
+}
+
+
 </script>
 {% endblock %} 

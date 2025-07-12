@@ -41,6 +41,14 @@ echo ========================================
 echo   Ready for AI-Powered Development!
 echo ========================================
 echo.
+echo 🤖 AI Context Loading Instructions:
+echo ------------------------------------------------
+echo AI should now automatically read:
+echo 1. docs/START_HERE.md (complete AI collaboration guide)
+echo 2. tasks/current-tasks.md (current priorities)
+echo 3. docs/dev/development-status.md (project status)
+echo 4. Any topic-specific docs based on discussion focus
+echo.
 echo Available AI Expert Modes:
 echo - re  : Rust Expert
 echo - ta  : Trading Analyst  
@@ -50,7 +58,11 @@ echo - ar  : System Architect
 echo - dw  : Documentation Writer
 echo - qa  : QA Engineer
 echo.
-echo Current Tasks: See tasks/current-tasks.md
-echo Project Status: See docs/dev/development-status.md
+echo 📋 Quick Status Summary:
+echo - Current Phase: Phase 2 - User Experience Optimization
+echo - Recent Achievements: Currency fix, Chinese search, diagnostics
+echo - Next Priority: API performance optimization
+echo.
+echo 🚀 Ready to start! Tell AI your focus area and begin coding.
 echo.
 pause 

@@ -216,6 +216,49 @@
         }
     }
 
+    /* 预警状态徽章 */
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .badge-active {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .badge-triggered {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .badge-cancelled {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    /* 预警卡片样式 */
+    .card {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .card-title {
+        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+
     /* 快速跳转按钮 */
     .quick-actions {
         display: flex;
@@ -226,7 +269,7 @@
 
     .quick-action-btn {
         flex: 1;
-        min-width: 200px;
+        min-width: 180px;
         padding: 0.75rem 1rem;
         background: var(--accent-color);
         color: white;
@@ -325,6 +368,55 @@
         </div>
     </div>
 
+    <!-- 活跃预警列表 -->
+    {% if all_alerts.len() > 0 %}
+    <div class="dashboard-section">
+        <div class="section-header">
+            <h3><i class="fas fa-bell me-2"></i>🔔 活跃预警 ({{ all_alerts.len() }}个)</h3>
+        </div>
+        <div class="section-content">
+            <div class="row">
+                {% for alert in all_alerts %}
+                <div class="col-12 col-md-6 col-lg-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-chart-line me-2"></i>{{ alert.symbol }}
+                                <span class="badge badge-{{ alert.status }} ms-2">
+                                    {% if alert.status == "active" %}活跃
+                                    {% else if alert.status == "triggered" %}已触发  
+                                    {% else %}已取消
+                                    {% endif %}
+                                </span>
+                            </h6>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    目标: {{ alert.condition }} 
+                                    <span class="currency-symbol" data-symbol="{{ alert.symbol }}">$</span>{{ alert.price }}
+                                </small>
+                            </p>
+                            {% if alert.triggered_at.is_some() %}
+                            <p class="card-text">
+                                <small class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    触发于 {{ alert.triggered_at.as_ref().unwrap() }}
+                                </small>
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="text-center mt-3">
+                <a href="/alerts" class="btn btn-outline-primary">
+                    <i class="fas fa-list me-2"></i>查看所有预警详情
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- 快速操作区域 -->
     <div class="quick-actions">
         <a href="/alerts/new" class="quick-action-btn">
@@ -332,6 +424,9 @@
         </a>
         <a href="/strategy" class="quick-action-btn">
             <i class="fas fa-brain me-2"></i>策略中心
+        </a>
+        <a href="/alerts" class="quick-action-btn">
+            <i class="fas fa-list me-2"></i>预警详情
         </a>
     </div>
 </div>

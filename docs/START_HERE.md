@@ -9,7 +9,7 @@
 
 1. **[当前状态](docs/Requirement/CURRENT_STATUS.md)** - 了解当前讨论重点和待决策问题
 2. **[项目导航](docs/Requirement/README.md)** - 掌握项目概况和文档结构
-3. **[工作模式](docs/Requirement/0.0-REQUIREMENT_MANAGEMENT_STRATEGY.md)** - 理解协作方式
+3. **[工作模式](docs/Requirement/0.0-REQUIREMENT_MANAGEMENT_STRATEGY.md)** - 理解ss协作方式
 4. **[配置管理规则](docs/technical/CONFIGURATION_MANAGEMENT.md)** - 掌握配置命名规则和文件位置
 
 ### Step 2: 根据话题读取专项文档 (按需)

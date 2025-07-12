@@ -408,8 +408,8 @@
             <div class="market-alert-body">
                 <div class="price-display">
                     <div>
-                        <div class="current-price">
-                            {{ market.currency_symbol() }}150.20
+                        <div class="current-price" data-symbol="{{ alert.symbol }}">
+                            <span class="loading-price">加载中...</span>
                             <span class="price-currency">
                                 {% if market.to_str() == "us" %}USD
                                 {% else if market.to_str() == "cn" %}CNY
@@ -517,6 +517,9 @@ $(document).ready(function() {
         $(this).addClass('fadeInUp');
     });
 
+    // 页面加载后立即更新价格
+    updateMarketPrices();
+    
     // 实时更新价格
     setInterval(function() {
         updateMarketPrices();
@@ -525,10 +528,78 @@ $(document).ready(function() {
 
 function updateMarketPrices() {
     $('.market-alert-card').each(function() {
-        const symbol = $(this).find('.alert-symbol').text().trim();
-        // TODO: 实现实时价格更新
-        console.log('Updating price for:', symbol);
+        const card = $(this);
+        // 修正选择器：直接从alert-symbol div获取文本，排除图标
+        const symbolText = card.find('.alert-symbol').text().trim();
+        const priceContainer = card.find('.current-price .loading-price');
+        const currencyElement = card.find('.price-currency');
+        const currency = currencyElement.text().trim();
+        
+        console.log('Updating price for symbol:', symbolText);
+        
+        // 同时更新股票名称显示
+        updateStockName(card, symbolText);
+        
+        // 调用API获取当前价格
+        fetch(`/api/stock-price/${encodeURIComponent(symbolText)}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Price API response for', symbolText, ':', data);
+                if (data.status === 'success') {
+                    // 根据货币类型显示正确的符号
+                    let priceText;
+                    if (currency === 'CNY') {
+                        priceText = `¥${data.price.toFixed(2)}`;
+                    } else if (currency === 'USD') {
+                        priceText = `$${data.price.toFixed(2)}`;
+                    } else {
+                        priceText = `${data.price.toFixed(2)}`;
+                    }
+                    priceContainer.text(priceText);
+                    priceContainer.removeClass('loading-price').addClass('actual-price');
+                } else {
+                    console.error('API returned error:', data);
+                    priceContainer.text('无数据');
+                    priceContainer.removeClass('loading-price').addClass('error-price');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching price for', symbolText, error);
+                priceContainer.text('加载失败');
+                priceContainer.removeClass('loading-price').addClass('error-price');
+            });
     });
+}
+
+function updateStockName(card, symbol) {
+    fetch(`/api/stocks/search?q=${symbol}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('Stock search response:', data);
+            if (data.results && data.results.length > 0) {
+                const stock = data.results[0];
+                let displayName;
+                
+                if (symbol.includes('.SZ') || symbol.includes('.SH')) {
+                    // A-shares: 显示中文名(代码)
+                    displayName = stock.name_cn ? `${stock.name_cn}(${symbol})` : symbol;
+                } else {
+                    // US stocks: 显示中文名(代码) 或 英文名(代码)
+                    const name = stock.name_cn || stock.name_en || symbol;
+                    displayName = `${name}(${symbol})`;
+                }
+                
+                // 更新显示
+                const symbolElement = card.find('.alert-symbol');
+                if (symbolElement.length > 0) {
+                    symbolElement.text(displayName);
+                    console.log(`Updated stock name to: ${displayName}`);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching stock name:', error);
+        });
 }
 
 function pauseAlert(alertId) {

@@ -85,10 +85,10 @@ if exist "tasks\current-tasks.md" (
     set /a ErrorCount+=1
 )
 
-if exist "docs\development-status.md" (
-    echo [OK] docs/development-status.md exists
+if exist "docs\dev\development-status.md" (
+    echo [OK] docs/dev/development-status.md exists
 ) else (
-    echo [ERROR] docs/development-status.md missing
+    echo [ERROR] docs/dev/development-status.md missing
     set /a ErrorCount+=1
 )
 

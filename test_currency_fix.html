@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>货币显示修复测试</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .price-display { font-size: 1.2em; font-weight: bold; margin: 10px 0; }
+        .currency-symbol { color: #007bff; }
+        button { padding: 8px 16px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 货币显示修复测试</h1>
+    
+    <div class="test-section">
+        <h3>1. 静态货币符号测试</h3>
+        <div class="price-display">
+            美股 AAPL: <span class="currency-symbol" data-symbol="AAPL">$</span>150.20
+        </div>
+        <div class="price-display">
+            A股 000001.SZ: <span class="currency-symbol" data-symbol="000001.SZ">$</span>11.84
+        </div>
+        <div class="price-display">
+            加密货币 BTC: <span class="currency-symbol" data-symbol="BTC">$</span>42000.00
+        </div>
+        <button onclick="initializeCurrencySymbols()">修复货币符号</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. API响应测试</h3>
+        <div id="api-test-result">点击按钮测试API...</div>
+        <button onclick="testAPI()">测试API响应</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 动态价格更新测试</h3>
+        <div class="price-display">
+            当前价格: <span id="dynamic-price">加载中...</span>
+        </div>
+        <button onclick="loadPriceWithCurrency('AAPL')">加载美股价格</button>
+        <button onclick="loadPriceWithCurrency('000001.SZ')">加载A股价格</button>
+    </div>
+
+    <script>
+        // 初始化静态货币符号
+        function initializeCurrencySymbols() {
+            $('.currency-symbol').each(function() {
+                const symbol = $(this).data('symbol');
+                if (symbol) {
+                    const currencySymbol = getCurrencySymbol(symbol);
+                    $(this).text(currencySymbol);
+                    $(this).css('color', 'green');
+                }
+            });
+        }
+
+        // 根据股票代码获取货币符号
+        function getCurrencySymbol(symbol) {
+            if (symbol.endsWith('.SZ') || symbol.endsWith('.SS') || symbol.endsWith('.SH')) {
+                return '¥';
+            } else if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT')) {
+                return '';
+            } else {
+                return '$';
+            }
+        }
+
+        // 测试API响应
+        function testAPI() {
+            const testData = {
+                symbol: "AAPL",
+                price: 150.20,
+                currency_symbol: "$",
+                market: "us"
+            };
+            
+            $('#api-test-result').html(`
+                <div style="background: #e8f5e8; padding: 10px; border-radius: 5px;">
+                    <strong>模拟API响应:</strong><br>
+                    Symbol: ${testData.symbol}<br>
+                    Price: ${testData.price}<br>
+                    Currency Symbol: ${testData.currency_symbol}<br>
+                    Market: ${testData.market}<br>
+                    <br>
+                    <strong>格式化显示:</strong> ${testData.currency_symbol}${testData.price.toFixed(2)}
+                </div>
+            `);
+        }
+
+        // 模拟动态价格加载
+        function loadPriceWithCurrency(symbol) {
+            $('#dynamic-price').text('加载中...');
+            
+            // 模拟API调用延迟
+            setTimeout(() => {
+                const mockData = {
+                    'AAPL': { price: 150.20, currency_symbol: '$', market: 'us' },
+                    '000001.SZ': { price: 11.84, currency_symbol: '¥', market: 'cn' }
+                };
+                
+                const data = mockData[symbol] || { price: 100.00, currency_symbol: '$', market: 'us' };
+                const currencySymbol = data.currency_symbol || getCurrencySymbol(symbol);
+                
+                $('#dynamic-price').html(`
+                    <span style="color: green; font-weight: bold;">
+                        ${currencySymbol}${data.price.toFixed(2)}
+                    </span>
+                    <small style="color: #666; margin-left: 10px;">
+                        (${data.market.toUpperCase()} 市场)
+                    </small>
+                `);
+            }, 1000);
+        }
+
+        // 页面加载完成后自动测试
+        $(document).ready(function() {
+            console.log('货币显示修复测试页面已加载');
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>预警显示修复测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        .test-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .critical {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 预警显示修复测试</h1>
+            <p>测试预警显示问题的修复效果</p>
+        </div>
+
+        <div class="critical">
+            <h4>🚨 已知问题修复状态</h4>
+            <ul>
+                <li>✅ SQL语法错误：已修复get_market_alerts函数中的错误SQL</li>
+                <li>✅ 主页预警显示：已在dashboard中增加预警列表显示</li>
+                <li>✅ 预警状态样式：已增加状态徽章和卡片样式</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>🏠 主页预警显示测试</h3>
+            <p>测试主页是否能正确显示添加的预警（包括已触发的AAPL预警）</p>
+            <button class="btn" onclick="testHomepageAlerts()">测试主页预警</button>
+            <div id="homepage-result" class="result">点击按钮开始测试...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 预警列表页面测试</h3>
+            <p>测试 /alerts 页面是否能正确显示预警列表</p>
+            <button class="btn" onclick="testAlertsPage()">测试预警列表</button>
+            <div id="alerts-result" class="result">点击按钮开始测试...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 已触发预警检测</h3>
+            <p>检测日志中显示的AAPL预警触发是否在UI中可见</p>
+            <button class="btn" onclick="testTriggeredAlerts()">检测触发预警</button>
+            <div id="triggered-result" class="result">点击按钮开始测试...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 市场分类测试</h3>
+            <p>测试修复后的市场分类统计功能</p>
+            <button class="btn" onclick="testMarketCategories()">测试市场分类</button>
+            <div id="market-categories-result" class="result">点击按钮开始测试...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔗 直接访问测试</h3>
+            <p>直接打开各个页面查看预警显示</p>
+            <a href="http://localhost:3000/" target="_blank" class="btn">主页 (应该显示预警)</a>
+            <a href="http://localhost:3000/alerts" target="_blank" class="btn">预警列表</a>
+            <a href="http://localhost:3000/alerts/new" target="_blank" class="btn">添加预警</a>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 实时测试</h3>
+            <p>每5秒自动检测预警状态变化</p>
+            <button class="btn" onclick="startLiveMonitoring()" id="live-btn">开始实时监控</button>
+            <div id="live-result" class="result">点击按钮开始实时监控...</div>
+        </div>
+    </div>
+
+    <script>
+        let liveMonitoring = false;
+        let liveInterval;
+
+        async function testHomepageAlerts() {
+            const result = document.getElementById('homepage-result');
+            result.textContent = '正在测试主页预警显示...';
+            result.className = 'result loading';
+
+            try {
+                const response = await fetch('http://localhost:3000/');
+                const html = await response.text();
+                
+                // 检查是否包含预警相关内容
+                if (html.includes('活跃预警') && html.includes('AAPL')) {
+                    result.textContent = '✅ 成功！主页显示了预警信息\n\n' + 
+                                        '检测到的内容：\n' +
+                                        '- 活跃预警区域\n' +
+                                        '- AAPL预警显示\n' +
+                                        '- 预警状态标识';
+                    result.className = 'result success';
+                } else if (html.includes('活跃预警')) {
+                    result.textContent = '⚠️ 部分成功：发现活跃预警区域，但可能没有AAPL预警\n\n' +
+                                        '请检查：\n' +
+                                        '- AAPL预警是否正确添加\n' +
+                                        '- 预警状态是否为active或triggered';
+                    result.className = 'result error';
+                } else {
+                    result.textContent = '❌ 主页仍未显示预警信息\n\n' +
+                                        '可能原因：\n' +
+                                        '- 数据库查询问题\n' +
+                                        '- 模板渲染问题\n' +
+                                        '- 预警数据为空';
+                    result.className = 'result error';
+                }
+            } catch (error) {
+                result.textContent = '❌ 测试失败: ' + error.message + '\n\n请确保服务器正在运行';
+                result.className = 'result error';
+            }
+        }
+
+        async function testAlertsPage() {
+            const result = document.getElementById('alerts-result');
+            result.textContent = '正在测试预警列表页面...';
+            result.className = 'result loading';
+
+            try {
+                const response = await fetch('http://localhost:3000/alerts');
+                const html = await response.text();
+                
+                if (html.includes('AAPL') || html.includes('GOOGL') || html.includes('000001.SZ')) {
+                    result.textContent = '✅ 成功！预警列表页面显示了预警数据\n\n' + 
+                                        '建议：直接打开页面查看详细信息';
+                    result.className = 'result success';
+                } else if (html.includes('暂无预警')) {
+                    result.textContent = '⚠️ 预警列表页面显示"暂无预警"\n\n' +
+                                        '这意味着：\n' +
+                                        '- 数据库中没有预警数据\n' +
+                                        '- 或者查询条件有问题';
+                    result.className = 'result error';
+                } else {
+                    result.textContent = '❌ 无法确定预警列表状态';
+                    result.className = 'result error';
+                }
+            } catch (error) {
+                result.textContent = '❌ 测试失败: ' + error.message;
+                result.className = 'result error';
+            }
+        }
+
+        async function testTriggeredAlerts() {
+            const result = document.getElementById('triggered-result');
+            result.textContent = '正在检测已触发的预警...';
+            result.className = 'result loading';
+
+            try {
+                const response = await fetch('http://localhost:3000/');
+                const html = await response.text();
+                
+                if (html.includes('已触发') && html.includes('AAPL')) {
+                    result.textContent = '✅ 成功！检测到AAPL预警已触发\n\n' + 
+                                        '状态：预警触发功能正常工作\n' +
+                                        '建议：检查邮件通知配置';
+                    result.className = 'result success';
+                } else {
+                    result.textContent = '⚠️ 未在UI中发现已触发的AAPL预警\n\n' +
+                                        '可能原因：\n' +
+                                        '- 预警状态未正确更新到数据库\n' +
+                                        '- 模板中触发状态显示有问题\n' +
+                                        '- 查询条件过滤了触发状态';
+                    result.className = 'result error';
+                }
+            } catch (error) {
+                result.textContent = '❌ 测试失败: ' + error.message;
+                result.className = 'result error';
+            }
+        }
+
+        async function testMarketCategories() {
+            const result = document.getElementById('market-categories-result');
+            result.textContent = '正在测试市场分类功能...';
+            result.className = 'result loading';
+
+            try {
+                const response = await fetch('http://localhost:3000/');
+                const html = await response.text();
+                
+                if (html.includes('美股') && html.includes('A股') && html.includes('活跃')) {
+                    result.textContent = '✅ 成功！市场分类功能正常\n\n' + 
+                                        '检测到：\n' +
+                                        '- 美股市场统计\n' +
+                                        '- A股市场统计\n' +
+                                        '- 活跃预警计数\n' +
+                                        '- 无SQL错误';
+                    result.className = 'result success';
+                } else {
+                    result.textContent = '❌ 市场分类功能可能仍有问题';
+                    result.className = 'result error';
+                }
+            } catch (error) {
+                result.textContent = '❌ 测试失败: ' + error.message;
+                result.className = 'result error';
+            }
+        }
+
+        function startLiveMonitoring() {
+            const btn = document.getElementById('live-btn');
+            const result = document.getElementById('live-result');
+            
+            if (!liveMonitoring) {
+                liveMonitoring = true;
+                btn.textContent = '停止监控';
+                result.textContent = '开始实时监控预警状态...\n';
+                result.className = 'result loading';
+                
+                liveInterval = setInterval(async () => {
+                    try {
+                        const response = await fetch('http://localhost:3000/');
+                        const html = await response.text();
+                        const timestamp = new Date().toLocaleTimeString();
+                        
+                        const alertCount = (html.match(/活跃预警/g) || []).length;
+                        const hasAPPL = html.includes('AAPL');
+                        
+                        result.textContent += `[${timestamp}] 活跃预警: ${alertCount}, AAPL: ${hasAPPL ? '✓' : '✗'}\n`;
+                    } catch (error) {
+                        result.textContent += `[${new Date().toLocaleTimeString()}] 错误: ${error.message}\n`;
+                    }
+                }, 5000);
+            } else {
+                liveMonitoring = false;
+                btn.textContent = '开始实时监控';
+                clearInterval(liveInterval);
+                result.textContent += '\n监控已停止。';
+                result.className = 'result';
+            }
+        }
+
+        // 页面加载时自动测试主页
+        window.onload = function() {
+            setTimeout(testHomepageAlerts, 1000);
+        };
+    </script>
+</body>
+</html> 

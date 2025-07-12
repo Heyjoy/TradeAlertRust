@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>市场选择 + 中文搜索功能测试</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        
+        .test-section { 
+            margin: 30px 0; 
+            padding: 20px; 
+            border: 1px solid #e9ecef; 
+            border-radius: 10px; 
+            background: #f8f9fa;
+        }
+        
+        .market-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 0.5rem;
+            background: white;
+        }
+
+        .market-option {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            color: #666;
+        }
+
+        .market-option:hover {
+            border-color: #007bff;
+            color: #007bff;
+        }
+
+        .market-option.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .market-flag {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+
+        .smart-search {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-result-item {
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f1f1;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .result-symbol {
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .result-name {
+            color: #333;
+            margin-left: 0.5rem;
+        }
+
+        .result-market {
+            font-size: 0.8rem;
+            color: #666;
+            float: right;
+        }
+
+        .result-industry {
+            font-size: 0.8rem;
+            color: #999;
+            display: block;
+            margin-top: 0.25rem;
+        }
+
+        .test-result {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #28a745;
+        }
+
+        .api-response {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .btn-test {
+            margin: 5px;
+            padding: 8px 16px;
+        }
+
+        .search-examples {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .example-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .example-btn:hover {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-success { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-loading { background: #ffc107; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">🚀 市场选择 + 中文搜索功能测试</h1>
+        
+        <!-- 市场选择测试 -->
+        <div class="test-section">
+            <h3><i class="fas fa-globe me-2"></i>1. 市场选择器测试</h3>
+            <div class="market-selector" id="marketSelector">
+                <div class="market-option active" data-market="us">
+                    <span class="market-flag">🇺🇸</span>美股
+                </div>
+                <div class="market-option" data-market="cn">
+                    <span class="market-flag">🇨🇳</span>A股
+                </div>
+                <div class="market-option" data-market="crypto">
+                    <span class="market-flag">₿</span>加密货币
+                </div>
+            </div>
+            <div class="test-result" id="marketResult">
+                当前选择市场: <strong>美股 (US)</strong>
+            </div>
+            
+            <button class="btn btn-primary btn-test" onclick="testMarketsAPI()">
+                <i class="fas fa-download me-1"></i>测试市场API
+            </button>
+            <div id="marketsAPIResult"></div>
+        </div>
+
+        <!-- 智能搜索测试 -->
+        <div class="test-section">
+            <h3><i class="fas fa-search me-2"></i>2. 智能股票搜索测试</h3>
+            
+            <div class="smart-search">
+                <input type="text" 
+                       class="search-input" 
+                       id="stockSearch" 
+                       placeholder="输入股票代码或名称..."
+                       autocomplete="off">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+            
+            <div class="alert alert-info">
+                <strong>搜索提示:</strong>
+                <span id="searchHint">美股：输入代码(如AAPL)或公司名(如Apple)</span>
+            </div>
+
+            <!-- 搜索示例 -->
+            <h5>快速测试示例:</h5>
+            <div class="search-examples">
+                <div class="example-btn" onclick="testSearch('AAPL')">🇺🇸 AAPL</div>
+                <div class="example-btn" onclick="testSearch('平安银行')">🇨🇳 平安银行</div>
+                <div class="example-btn" onclick="testSearch('000001')">🇨🇳 000001</div>
+                <div class="example-btn" onclick="testSearch('payh')">🇨🇳 拼音: payh</div>
+                <div class="example-btn" onclick="testSearch('特斯拉')">🇺🇸 特斯拉</div>
+                <div class="example-btn" onclick="testSearch('BTC')">₿ BTC</div>
+                <div class="example-btn" onclick="testSearch('贵州茅台')">🇨🇳 贵州茅台</div>
+                <div class="example-btn" onclick="testSearch('Google')">🇺🇸 Google</div>
+            </div>
+
+            <div id="searchTestResult"></div>
+        </div>
+
+        <!-- 选择结果测试 -->
+        <div class="test-section">
+            <h3><i class="fas fa-check me-2"></i>3. 股票选择结果</h3>
+            <div class="test-result">
+                <strong>选择的股票:</strong> <span id="selectedStock">未选择</span><br>
+                <strong>市场:</strong> <span id="selectedMarket">-</span><br>
+                <strong>货币符号:</strong> <span id="selectedCurrency">-</span>
+            </div>
+            
+            <button class="btn btn-success btn-test" onclick="validateSelectedStock()">
+                <i class="fas fa-check-circle me-1"></i>验证股票价格
+            </button>
+            <div id="validationResult"></div>
+        </div>
+
+        <!-- API测试结果 -->
+        <div class="test-section">
+            <h3><i class="fas fa-code me-2"></i>4. API响应日志</h3>
+            <div class="api-response" id="apiLog">等待API调用...</div>
+            <button class="btn btn-secondary btn-sm" onclick="clearLog()">清空日志</button>
+        </div>
+    </div>
+
+    <script>
+        let currentMarket = 'us';
+        let searchTimeout;
+        let markets = {};
+        let selectedStock = null;
+        
+        $(document).ready(function() {
+            logAPI('页面加载完成，开始初始化...');
+            loadMarkets();
+            
+            // 市场选择器事件
+            $('.market-option').on('click', function() {
+                const market = $(this).data('market');
+                updateMarketSelection(market);
+            });
+            
+            // 智能搜索事件
+            $('#stockSearch').on('input', function() {
+                const query = $(this).val().trim();
+                
+                clearTimeout(searchTimeout);
+                
+                if (query.length < 1) {
+                    $('#searchResults').hide();
+                    return;
+                }
+                
+                searchTimeout = setTimeout(() => {
+                    searchStocks(query, currentMarket);
+                }, 300);
+            });
+            
+            // 点击其他地方隐藏搜索结果
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.smart-search').length) {
+                    $('#searchResults').hide();
+                }
+            });
+        });
+        
+        // 加载市场信息
+        function loadMarkets() {
+            logAPI('正在加载市场信息...');
+            
+            // 模拟API响应（因为实际API可能还没运行）
+            const mockMarkets = {
+                markets: [
+                    {
+                        code: "us",
+                        name: "美股",
+                        name_en: "US Stocks",
+                        symbol_format: "AAPL",
+                        currency: "USD",
+                        currency_symbol: "$"
+                    },
+                    {
+                        code: "cn", 
+                        name: "A股",
+                        name_en: "China A-Shares",
+                        symbol_format: "000001.SZ",
+                        currency: "CNY",
+                        currency_symbol: "¥"
+                    },
+                    {
+                        code: "crypto",
+                        name: "加密货币", 
+                        name_en: "Cryptocurrency",
+                        symbol_format: "BTC",
+                        currency: "USDT",
+                        currency_symbol: ""
+                    }
+                ]
+            };
+            
+            markets = {};
+            mockMarkets.markets.forEach(market => {
+                markets[market.code] = market;
+            });
+            
+            logAPI('市场信息加载成功: ' + JSON.stringify(mockMarkets, null, 2));
+        }
+        
+        // 测试市场API
+        function testMarketsAPI() {
+            logAPI('测试市场API: GET /api/stocks/markets');
+            
+            $.get('/api/stocks/markets')
+                .done(function(data) {
+                    logAPI('市场API响应成功: ' + JSON.stringify(data, null, 2));
+                    $('#marketsAPIResult').html(`
+                        <div class="test-result mt-2">
+                            <span class="status-indicator status-success"></span>
+                            API调用成功，返回 ${data.markets.length} 个市场
+                        </div>
+                    `);
+                })
+                .fail(function(xhr) {
+                    logAPI('市场API调用失败: ' + xhr.status + ' ' + xhr.statusText);
+                    $('#marketsAPIResult').html(`
+                        <div class="test-result mt-2" style="border-left-color: #dc3545;">
+                            <span class="status-indicator status-error"></span>
+                            API调用失败: ${xhr.status} ${xhr.statusText}<br>
+                            <small>可能服务器未启动，使用模拟数据</small>
+                        </div>
+                    `);
+                });
+        }
+        
+        // 更新市场选择
+        function updateMarketSelection(market) {
+            currentMarket = market;
+            $('.market-option').removeClass('active');
+            $(`.market-option[data-market="${market}"]`).addClass('active');
+            
+            const marketInfo = markets[market] || { name: market.toUpperCase(), currency_symbol: '$' };
+            $('#marketResult').html(`当前选择市场: <strong>${marketInfo.name} (${market.toUpperCase()})</strong>`);
+            
+            updateSearchHint(market);
+            logAPI(`切换市场: ${market} - ${marketInfo.name}`);
+        }
+        
+        // 更新搜索提示
+        function updateSearchHint(market) {
+            const hints = {
+                'us': '美股：输入代码(如AAPL)或公司名(如Apple)',
+                'cn': 'A股：输入代码(如000001)或中文名(如平安银行)或拼音(如payh)',
+                'crypto': '加密货币：输入代码(如BTC)或名称(如Bitcoin)'
+            };
+            $('#searchHint').text(hints[market] || '输入股票代码或名称...');
+        }
+        
+        // 测试搜索
+        function testSearch(query) {
+            $('#stockSearch').val(query);
+            searchStocks(query, currentMarket);
+        }
+        
+        // 搜索股票
+        function searchStocks(query, market) {
+            logAPI(`搜索股票: query="${query}", market="${market}"`);
+            $('#searchResults').html('<div class="p-3 text-center"><i class="fas fa-spinner fa-spin"></i> 搜索中...</div>').show();
+            
+            // 尝试真实API
+            $.get('/api/stocks/search', { q: query, market: market })
+                .done(function(data) {
+                    logAPI('搜索API响应成功: ' + JSON.stringify(data, null, 2));
+                    displaySearchResults(data.results);
+                })
+                .fail(function(xhr) {
+                    logAPI('搜索API调用失败: ' + xhr.status + ' ' + xhr.statusText + '，使用模拟数据');
+                    // 使用模拟数据
+                    const mockResults = getMockSearchResults(query, market);
+                    displaySearchResults(mockResults);
+                });
+        }
+        
+        // 获取模拟搜索结果
+        function getMockSearchResults(query, market) {
+            const mockData = {
+                'us': [
+                    { symbol: 'AAPL', display_name: 'AAPL 苹果公司 (Apple Inc.)', market: 'us', industry: 'Technology' },
+                    { symbol: 'GOOGL', display_name: 'GOOGL 谷歌 (Alphabet Inc.)', market: 'us', industry: 'Technology' },
+                    { symbol: 'TSLA', display_name: 'TSLA 特斯拉 (Tesla Inc.)', market: 'us', industry: 'Automotive' }
+                ],
+                'cn': [
+                    { symbol: '000001.SZ', display_name: '平安银行 (000001.SZ)', market: 'cn', industry: '银行' },
+                    { symbol: '600519.SH', display_name: '贵州茅台 (600519.SH)', market: 'cn', industry: '白酒' },
+                    { symbol: '000858.SZ', display_name: '五粮液 (000858.SZ)', market: 'cn', industry: '白酒' }
+                ],
+                'crypto': [
+                    { symbol: 'BTC', display_name: 'BTC (Bitcoin)', market: 'crypto', industry: 'Cryptocurrency' }
+                ]
+            };
+            
+            const allResults = market === 'all' ? 
+                [...mockData.us, ...mockData.cn, ...mockData.crypto] : 
+                (mockData[market] || []);
+            
+            return allResults.filter(stock => 
+                stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
+                stock.display_name.toLowerCase().includes(query.toLowerCase())
+            );
+        }
+        
+        // 显示搜索结果
+        function displaySearchResults(results) {
+            if (results.length === 0) {
+                $('#searchResults').html('<div class="p-3 text-center text-muted">未找到相关股票</div>');
+                return;
+            }
+            
+            let html = '';
+            results.forEach(stock => {
+                const marketName = markets[stock.market]?.name || stock.market.toUpperCase();
+                html += `
+                    <div class="search-result-item" data-symbol="${stock.symbol}" data-market="${stock.market}">
+                        <span class="result-symbol">${stock.symbol}</span>
+                        <span class="result-name">${stock.display_name}</span>
+                        <span class="result-market">${marketName}</span>
+                        ${stock.industry ? `<span class="result-industry">${stock.industry}</span>` : ''}
+                    </div>
+                `;
+            });
+            
+            $('#searchResults').html(html);
+            
+            // 绑定点击事件
+            $('.search-result-item').off('click').on('click', function() {
+                const symbol = $(this).data('symbol');
+                const market = $(this).data('market');
+                const displayName = $(this).find('.result-name').text();
+                
+                selectStock(symbol, market, displayName);
+                $('#searchResults').hide();
+            });
+        }
+        
+        // 选择股票
+        function selectStock(symbol, market, displayName) {
+            selectedStock = { symbol, market, displayName };
+            
+            const marketInfo = markets[market] || { name: market, currency_symbol: '$' };
+            
+            $('#selectedStock').text(`${symbol} - ${displayName}`);
+            $('#selectedMarket').text(marketInfo.name);
+            $('#selectedCurrency').text(marketInfo.currency_symbol);
+            
+            logAPI(`选择股票: ${symbol} (${market})`);
+        }
+        
+        // 验证选择的股票
+        function validateSelectedStock() {
+            if (!selectedStock) {
+                alert('请先选择一个股票');
+                return;
+            }
+            
+            const symbol = selectedStock.symbol;
+            logAPI(`验证股票价格: ${symbol}`);
+            
+            $('#validationResult').html(`
+                <div class="test-result mt-2">
+                    <span class="status-indicator status-loading"></span>
+                    正在验证股票价格...
+                </div>
+            `);
+            
+            $.get(`/api/prices/${symbol}/latest`)
+                .done(function(data) {
+                    logAPI('价格验证成功: ' + JSON.stringify(data, null, 2));
+                    $('#validationResult').html(`
+                        <div class="test-result mt-2">
+                            <span class="status-indicator status-success"></span>
+                            <strong>验证成功！</strong><br>
+                            当前价格: ${data.currency_symbol}${data.price.toFixed(2)}<br>
+                            市场: ${data.market}<br>
+                            货币: ${data.currency}
+                        </div>
+                    `);
+                })
+                .fail(function(xhr) {
+                    logAPI('价格验证失败: ' + xhr.status + ' ' + xhr.statusText);
+                    $('#validationResult').html(`
+                        <div class="test-result mt-2" style="border-left-color: #dc3545;">
+                            <span class="status-indicator status-error"></span>
+                            验证失败: ${xhr.status} ${xhr.statusText}<br>
+                            <small>可能股票代码无效或服务器未启动</small>
+                        </div>
+                    `);
+                });
+        }
+        
+        // API日志
+        function logAPI(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const currentLog = $('#apiLog').text();
+            $('#apiLog').text(`[${timestamp}] ${message}\n${currentLog}`);
+        }
+        
+        // 清空日志
+        function clearLog() {
+            $('#apiLog').text('日志已清空...');
+        }
+    </script>
+</body>
+</html> 

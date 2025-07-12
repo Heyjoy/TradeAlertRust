@@ -43,8 +43,130 @@
         flex: 1;
     }
 
-    .alert-symbol {
-        text-transform: uppercase;
+    /* 市场选择器样式 */
+    .market-selector {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 0.5rem;
+        background: #f8f9fa;
+    }
+
+    .market-option {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+        color: #666;
+    }
+
+    .market-option:hover {
+        border-color: #007bff;
+        color: #007bff;
+    }
+
+    .market-option.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+    .market-flag {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+
+    /* 智能搜索框样式 */
+    .smart-search {
+        position: relative;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    }
+
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+
+    .search-result-item {
+        padding: 0.75rem;
+        border-bottom: 1px solid #f1f1f1;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .search-result-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+
+    .result-symbol {
+        font-weight: 600;
+        color: #007bff;
+    }
+
+    .result-name {
+        color: #333;
+        margin-left: 0.5rem;
+    }
+
+    .result-market {
+        font-size: 0.8rem;
+        color: #666;
+        float: right;
+    }
+
+    .result-industry {
+        font-size: 0.8rem;
+        color: #999;
+        display: block;
+        margin-top: 0.25rem;
+    }
+
+    /* 加载状态 */
+    .search-loading {
+        padding: 1rem;
+        text-align: center;
+        color: #666;
+        font-style: italic;
+    }
+
+    .search-no-results {
+        padding: 1rem;
+        text-align: center;
+        color: #999;
     }
 
     .price-input {
@@ -62,6 +184,15 @@
         top: 50%;
         transform: translateY(-50%);
         color: #666;
+    }
+    
+    /* 动态货币符号支持 */
+    .price-input[data-currency="CNY"]::before {
+        content: "¥";
+    }
+    
+    .price-input[data-currency="USDT"]::before {
+        content: "";
     }
 
     /* 股票验证状态样式 */
@@ -110,6 +241,10 @@
         .form-actions {
             flex-direction: column;
         }
+
+        .market-selector {
+            flex-direction: column;
+        }
     }
 </style>
 {% endblock %}
@@ -129,23 +264,44 @@
         <input type="hidden" name="_method" value="PUT">
         {% endif %}
 
+        <!-- 市场选择器 -->
         <div class="form-group">
-            <label for="symbol" class="form-label">股票代码</label>
-            <input type="text" 
-                   class="form-control alert-symbol" 
-                   id="symbol" 
-                   name="symbol" 
-                   value="{% if alert.is_some() %}{{ alert.as_ref().unwrap().symbol }}{% endif %}"
-                   required 
-                   pattern="[A-Za-z0-9.]+"
-                   title="请输入有效的股票代码（例如：AAPL、GOOGL）"
-                   placeholder="例如：AAPL、PDD、GOOGL">
-            
-            <!-- 实时验证状态显示 -->
-            <div id="symbol-validation" class="mt-2"></div>
-            
-            <div class="form-text">输入股票代码后会自动验证并显示当前价格</div>
+            <label class="form-label">选择市场</label>
+            <div class="market-selector" id="marketSelector">
+                <div class="market-option active" data-market="us">
+                    <span class="market-flag">🇺🇸</span>美股
+                </div>
+                <div class="market-option" data-market="cn">
+                    <span class="market-flag">🇨🇳</span>A股
+                </div>
+                <div class="market-option" data-market="crypto">
+                    <span class="market-flag">₿</span>加密货币
+                </div>
+            </div>
+            <div class="form-text">选择股票所属市场，系统会自动调整搜索范围和格式</div>
         </div>
+
+        <!-- 智能股票搜索 -->
+        <div class="form-group">
+            <label for="stockSearch" class="form-label">股票搜索</label>
+            <div class="smart-search">
+                <input type="text" 
+                       class="search-input" 
+                       id="stockSearch" 
+                       placeholder="输入股票代码或名称..."
+                       autocomplete="off">
+                <div class="search-results" id="searchResults"></div>
+            </div>
+            <div class="form-text" id="searchHint">
+                美股：输入代码(如AAPL)或公司名(如Apple) | A股：输入代码(如000001)或中文名(如平安银行)
+            </div>
+        </div>
+
+        <!-- 隐藏的股票代码字段 -->
+        <input type="hidden" id="symbol" name="symbol" value="{% if alert.is_some() %}{{ alert.as_ref().unwrap().symbol }}{% endif %}">
+        
+        <!-- 实时验证状态显示 -->
+        <div id="symbol-validation" class="mt-2"></div>
 
         <div class="form-group">
             <label for="condition" class="form-label">预警条件</label>
@@ -158,7 +314,7 @@
 
         <div class="form-group">
             <label for="price" class="form-label">目标价格</label>
-            <div class="price-input">
+            <div class="price-input" id="priceInput">
                 <input type="number" 
                        class="form-control" 
                        id="price" 
@@ -183,15 +339,12 @@
         </div>
 
         <div class="form-actions">
-            <a href="/" class="btn btn-outline-secondary">
+            <a href="/" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i>返回
             </a>
-            <button type="submit" class="btn btn-primary">
-                {% if alert.is_some() %}
-                    <i class="fas fa-save me-1"></i>保存修改
-                {% else %}
-                    <i class="fas fa-plus me-1"></i>创建预警
-                {% endif %}
+            <button type="submit" class="btn btn-primary" disabled>
+                <i class="fas fa-save me-1"></i>
+                {% if alert.is_some() %}更新预警{% else %}创建预警{% endif %}
             </button>
         </div>
     </form>
@@ -201,70 +354,192 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    let validationTimeout;
-    let isComposing = false;  // 添加输入法组合状态标记
+    let currentMarket = 'us';
+    let searchTimeout;
+    let markets = {};
     
-    // 处理输入法组合开始
-    $('#symbol').on('compositionstart', function() {
-        isComposing = true;
+    // 加载市场信息
+    loadMarkets();
+    
+    // 初始化现有预警的市场选择
+    {% if alert.is_some() %}
+    const existingSymbol = '{{ alert.as_ref().unwrap().symbol }}';
+    if (existingSymbol) {
+        currentMarket = detectMarket(existingSymbol);
+        updateMarketSelection(currentMarket);
+        $('#stockSearch').val(existingSymbol);
+        validateSymbol(existingSymbol);
+    }
+    {% endif %}
+    
+    // 市场选择器事件
+    $('.market-option').on('click', function() {
+        const market = $(this).data('market');
+        updateMarketSelection(market);
+        updateSearchHint(market);
+        updatePriceCurrency(market);
+        
+        // 清空搜索
+        $('#stockSearch').val('');
+        $('#symbol').val('');
+        $('#searchResults').hide();
+        $('#symbol-validation').empty();
+        $('button[type="submit"]').prop('disabled', true);
     });
     
-    // 处理输入法组合结束
-    $('#symbol').on('compositionend', function() {
-        isComposing = false;
-        // 组合结束后触发一次验证
-        const symbol = $(this).val().trim();
-        if (symbol.length > 0) {
-            if (validationTimeout) {
-                clearTimeout(validationTimeout);
-            }
-            validationTimeout = setTimeout(() => {
-                validateStockSymbol(symbol);
-            }, 500);
-        }
-    });
-    
-    $('#symbol').on('input', function() {
-        // 如果是输入法组合状态，不处理
-        if (isComposing) {
-            return;
-        }
+    // 智能搜索事件
+    $('#stockSearch').on('input', function() {
+        const query = $(this).val().trim();
         
-        this.value = this.value.toUpperCase();
+        clearTimeout(searchTimeout);
         
-        // 清除之前的定时器
-        if (validationTimeout) {
-            clearTimeout(validationTimeout);
-        }
-        
-        const symbol = $(this).val().trim();
-        
-        // 如果输入为空，清除验证状态
-        if (symbol.length === 0) {
+        if (query.length < 1) {
+            $('#searchResults').hide();
+            $('#symbol').val('');
             $('#symbol-validation').empty();
+            $('button[type="submit"]').prop('disabled', true);
             return;
         }
         
-        // 防抖：用户停止输入500ms后才验证
-        validationTimeout = setTimeout(() => {
-            validateStockSymbol(symbol);
-        }, 500);
+        // 防抖搜索
+        searchTimeout = setTimeout(() => {
+            searchStocks(query, currentMarket);
+        }, 300);
     });
-
-    // 股票代码验证函数
-    async function validateStockSymbol(symbol) {
+    
+    // 点击其他地方隐藏搜索结果
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.smart-search').length) {
+            $('#searchResults').hide();
+        }
+    });
+    
+    // 加载市场信息
+    function loadMarkets() {
+        $.get('/api/stocks/markets')
+            .done(function(data) {
+                markets = {};
+                data.markets.forEach(market => {
+                    markets[market.code] = market;
+                });
+            })
+            .fail(function() {
+                console.error('Failed to load markets');
+            });
+    }
+    
+    // 更新市场选择
+    function updateMarketSelection(market) {
+        currentMarket = market;
+        $('.market-option').removeClass('active');
+        $(`.market-option[data-market="${market}"]`).addClass('active');
+    }
+    
+    // 更新搜索提示
+    function updateSearchHint(market) {
+        const hints = {
+            'us': '美股：输入代码(如AAPL)或公司名(如Apple)',
+            'cn': 'A股：输入代码(如000001)或中文名(如平安银行)或拼音(如payh)',
+            'crypto': '加密货币：输入代码(如BTC)或名称(如Bitcoin)'
+        };
+        $('#searchHint').text(hints[market] || '输入股票代码或名称...');
+    }
+    
+    // 更新价格货币符号
+    function updatePriceCurrency(market) {
+        const currencies = {
+            'us': 'USD',
+            'cn': 'CNY', 
+            'crypto': 'USDT'
+        };
+        $('#priceInput').attr('data-currency', currencies[market] || 'USD');
+    }
+    
+    // 检测股票市场
+    function detectMarket(symbol) {
+        if (symbol.endsWith('.SZ') || symbol.endsWith('.SH') || symbol.endsWith('.SS')) {
+            return 'cn';
+        } else if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT')) {
+            return 'crypto';
+        } else {
+            return 'us';
+        }
+    }
+    
+    // 搜索股票
+    function searchStocks(query, market) {
+        $('#searchResults').html('<div class="search-loading">搜索中...</div>').show();
+        
+        $.get('/api/stocks/search', { q: query, market: market })
+            .done(function(data) {
+                displaySearchResults(data.results);
+            })
+            .fail(function() {
+                $('#searchResults').html('<div class="search-no-results">搜索失败，请重试</div>');
+            });
+    }
+    
+    // 显示搜索结果
+    function displaySearchResults(results) {
+        if (results.length === 0) {
+            $('#searchResults').html('<div class="search-no-results">未找到相关股票</div>');
+            return;
+        }
+        
+        let html = '';
+        results.forEach(stock => {
+            const marketName = markets[stock.market]?.name || stock.market.toUpperCase();
+            html += `
+                <div class="search-result-item" data-symbol="${stock.symbol}" data-market="${stock.market}">
+                    <span class="result-symbol">${stock.symbol}</span>
+                    <span class="result-name">${stock.display_name}</span>
+                    <span class="result-market">${marketName}</span>
+                    ${stock.industry ? `<span class="result-industry">${stock.industry}</span>` : ''}
+                </div>
+            `;
+        });
+        
+        $('#searchResults').html(html);
+    }
+    
+    // 选择搜索结果
+    $(document).on('click', '.search-result-item', function() {
+        const symbol = $(this).data('symbol');
+        const market = $(this).data('market');
+        const displayName = $(this).find('.result-name').text();
+        
+        $('#stockSearch').val(displayName);
+        $('#symbol').val(symbol);
+        $('#searchResults').hide();
+        
+        // 更新市场选择
+        if (market !== currentMarket) {
+            updateMarketSelection(market);
+            updateSearchHint(market);
+            updatePriceCurrency(market);
+        }
+        
+        // 验证股票
+        validateSymbol(symbol);
+    });
+    
+    // 验证股票代码
+    async function validateSymbol(symbol) {
+        if (!symbol) return;
+        
         const $validation = $('#symbol-validation');
         
         // 显示加载状态
         $validation.html(`
             <div class="symbol-validation loading">
                 <i class="fas fa-spinner fa-spin me-2"></i>
-                正在验证股票代码 "${symbol}"...
+                正在验证股票代码...
             </div>
         `);
         
+        $('button[type="submit"]').prop('disabled', true);
+        
         try {
-            // 调用价格API验证
             const response = await fetch(`/api/prices/${symbol}/latest`);
             
             if (response.ok) {
@@ -276,7 +551,8 @@ $(document).ready(function() {
                     second: '2-digit'
                 });
                 
-                // 显示成功状态
+                const currencySymbol = data.currency_symbol || '$';
+                
                 $validation.html(`
                     <div class="symbol-validation success">
                         <div class="d-flex justify-content-between align-items-center">
@@ -285,7 +561,7 @@ $(document).ready(function() {
                                 <strong>${symbol}</strong> - 股票代码有效
                             </div>
                             <div class="current-price-display">
-                                $${data.price.toFixed(2)}
+                                ${currencySymbol}${data.price.toFixed(2)}
                             </div>
                         </div>
                         <div class="price-timestamp">
@@ -295,43 +571,36 @@ $(document).ready(function() {
                     </div>
                 `);
                 
-                // 启用提交按钮
-                $('#alertForm button[type="submit"]').prop('disabled', false);
+                $('button[type="submit"]').prop('disabled', false);
                 
             } else {
-                // 显示错误状态
                 $validation.html(`
                     <div class="symbol-validation error">
                         <i class="fas fa-exclamation-triangle me-2"></i>
                         股票代码 "<strong>${symbol}</strong>" 无效或暂时无法获取价格
                         <div class="mt-1">
-                            <small>请检查代码是否正确，常见代码：AAPL (苹果)、PDD (拼多多)、GOOGL (谷歌)</small>
+                            <small>请检查代码是否正确或尝试使用搜索功能</small>
                         </div>
                     </div>
                 `);
                 
-                // 禁用提交按钮
-                $('#alertForm button[type="submit"]').prop('disabled', true);
+                $('button[type="submit"]').prop('disabled', true);
             }
         } catch (error) {
             console.error('验证股票代码时出错:', error);
             
-            // 显示网络错误
             $validation.html(`
                 <div class="symbol-validation error">
                     <i class="fas fa-wifi me-2"></i>
                     网络连接异常，请检查网络后重试
-                    <div class="mt-1">
-                        <small>如果问题持续存在，请稍后再试</small>
-                    </div>
                 </div>
             `);
             
-            // 允许提交（网络问题不应该阻止用户）
-            $('#alertForm button[type="submit"]').prop('disabled', false);
+            $('button[type="submit"]').prop('disabled', false);
         }
     }
 
+    // 表单提交
     $('#alertForm').on('submit', function(e) {
         e.preventDefault();
         
