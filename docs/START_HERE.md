@@ -42,6 +42,11 @@
 - **[开发计划](docs/development/DEVELOPMENT_PLAN.md)**
 - **[配置管理规则](docs/technical/CONFIGURATION_MANAGEMENT.md)** - 环境变量命名和配置文件位置
 
+#### 如果遇到编译或技术问题
+- **[故障排除指南](troubleshooting/README.md)** - 常见问题快速解决
+- **[SQLx编译问题](troubleshooting/sqlx-compilation-issues.md)** - SQLx相关错误详细解决方案
+- **[开发环境检查](../CLAUDE.md#常见问题解决方案)** - 环境配置检查清单
+
 #### 如果讨论产品规划
 - **[PRD主文档](docs/Requirement/1.1-PRD_MASTER.md)**
 
@@ -228,6 +233,12 @@ scripts/development/end_work_session.bat
 - **[AI协作工作流程](ai-collaboration-workflow.md)** - 详细协作流程指南
 - **[AI协作经验沉淀](dev/ai-collaboration-insights.md)** - 实战协作心得和最佳实践
 - **[配置管理规则](technical/CONFIGURATION_MANAGEMENT.md)** - 配置规范
+
+### **🔧 故障排除和调试**
+- **[故障排除总览](troubleshooting/README.md)** - 问题分类和快速诊断
+- **[SQLx编译问题详解](troubleshooting/sqlx-compilation-issues.md)** - 数据库查询编译错误
+- **[SQLx调试心得](dev/sqlx-debugging-experience.md)** - 实际问题解决经验
+- **[环境检查脚本](../scripts/check_dev_env.sh)** - 自动化环境诊断
 
 ### **📊 项目管理**
 - **[开发状态跟踪](development-status.md)** - 项目整体进展

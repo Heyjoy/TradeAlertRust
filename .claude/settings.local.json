@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(cargo:*)",
+      "Bash(rustc:*)",
+      "Bash(ls:*)",
+      "Bash(~/.cargo/bin/cargo build)",
+      "Bash(export:*)"
+    ],
+    "deny": []
+  }
+}

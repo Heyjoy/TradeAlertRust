@@ -625,9 +625,10 @@ impl PriceService {
         let alert = sqlx::query_as!(
             crate::models::Alert,
             r#"
-            SELECT id, symbol, condition as "condition: crate::models::AlertCondition", 
+            SELECT id as "id!", symbol, condition as "condition: crate::models::AlertCondition", 
                    price, status as "status: crate::models::AlertStatus", 
-                   created_at, updated_at, triggered_at, notification_email
+                   created_at, updated_at, triggered_at, notification_email,
+                   COALESCE(user_id, 'default') as "user_id!"
             FROM alerts
             WHERE id = ?
             "#,

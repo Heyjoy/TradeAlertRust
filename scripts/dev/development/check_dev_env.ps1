@@ -120,15 +120,57 @@ if (Test-Path "Cargo.toml") {
     Write-Status "Cargo.toml" "ERROR" "文件不存在"
 }
 
+# 检查数据库和SQLx配置
+Write-Host "`n数据库和SQLx检查:" -ForegroundColor Yellow
+
+# 检查数据库目录
+if (Test-Path "data") {
+    Write-Status "数据目录" "OK"
+    if (Test-Path "data/trade_alert.db") {
+        Write-Status "数据库文件" "OK"
+    } else {
+        Write-Status "数据库文件" "WARN" "将在首次运行时创建"
+    }
+} else {
+    Write-Status "数据目录" "WARN" "不存在，将创建"
+    New-Item -ItemType Directory -Path "data" -Force | Out-Null
+}
+
+# 检查SQLx查询缓存
+if (Test-Path ".sqlx") {
+    $CacheFiles = Get-ChildItem ".sqlx" -Filter "query-*.json" -ErrorAction SilentlyContinue
+    $Count = if ($CacheFiles) { $CacheFiles.Count } else { 0 }
+    Write-Status "SQLx查询缓存" "OK" "包含 $Count 个缓存文件"
+} else {
+    Write-Status "SQLx查询缓存" "WARN" "不存在，需要运行 cargo sqlx prepare"
+}
+
+# 检查环境变量
+$DatabaseUrl = $env:DATABASE_URL
+if ($DatabaseUrl) {
+    Write-Status "DATABASE_URL" "OK" $DatabaseUrl
+} else {
+    Write-Status "DATABASE_URL" "WARN" "未设置"
+}
+
+# 检查SQLx CLI
+$SqlxVersion = & sqlx --version 2>$null
+if ($SqlxVersion) {
+    Write-Status "SQLx CLI" "OK" $SqlxVersion
+} else {
+    Write-Status "SQLx CLI" "WARN" "未安装，运行: cargo install sqlx-cli --features sqlite"
+}
+
 # 编译检查
 Write-Host "   检查编译状态..." -ForegroundColor Gray
 $CheckResult = & cargo check --quiet 2>&1
 if ($LASTEXITCODE -eq 0) {
     Write-Status "项目编译" "OK" "无错误"
 } else {
-    Write-Status "项目编译" "ERROR" "存在错误"
+    Write-Status "项目编译" "ERROR" "存在错误，可能是SQLx相关问题"
     if ($Verbose) {
         Write-Host "   编译错误: $CheckResult" -ForegroundColor Red
+        Write-Host "   参考文档: docs/troubleshooting/sqlx-compilation-issues.md" -ForegroundColor Cyan
     }
 }
 

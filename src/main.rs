@@ -14,16 +14,39 @@ use crate::templates::{AlertFormTemplate, IndexTemplate};
 use askama::Template;
 use axum::{
     extract::{Json, Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse},
-    routing::get,
+    routing::{get, get_service},
     Router,
 };
+use tower_http::services::ServeDir;
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 // 使用handlers模块中的AppState定义
+
+// 用户标识提取函数
+fn extract_user_id(headers: &HeaderMap) -> String {
+    // 从Headers中提取用户标识
+    if let Some(user_id) = headers.get("X-User-Id") {
+        if let Ok(user_id_str) = user_id.to_str() {
+            if !user_id_str.is_empty() {
+                return user_id_str.to_string();
+            }
+        }
+    }
+    
+    // 如果没有提供用户标识，生成一个基于IP的默认标识
+    if let Some(forwarded_for) = headers.get("X-Forwarded-For") {
+        if let Ok(ip) = forwarded_for.to_str() {
+            return format!("user_{}", ip.replace(".", "_").replace(":", "_"));
+        }
+    }
+    
+    // 最后的fallback
+    "demo_user".to_string()
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -87,6 +110,8 @@ async fn main() -> anyhow::Result<()> {
             "/api/stock-price/:symbol",
             get(handlers::market::get_stock_price),
         )
+        // 静态文件服务
+        .nest_service("/static", get_service(ServeDir::new("static")))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -102,8 +127,23 @@ async fn main() -> anyhow::Result<()> {
 }
 
 // 首页处理函数
-async fn index_page(State(state): State<AppState>) -> impl IntoResponse {
-    match state.db.list_alerts().await {
+async fn index_page(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    let user_id = extract_user_id(&headers);
+    
+    // 根据是否启用演示模式决定查询方式
+    let alerts_result = if let Ok(config) = config::Config::load() {
+        if config.demo.enabled {
+            // 演示模式：只显示该用户的预警
+            state.db.list_alerts_by_user(&user_id).await
+        } else {
+            // 非演示模式：显示所有预警
+            state.db.list_alerts().await
+        }
+    } else {
+        state.db.list_alerts().await
+    };
+    
+    match alerts_result {
         Ok(alerts) => {
             let template = IndexTemplate::new(alerts);
             match template.render() {
@@ -128,8 +168,30 @@ async fn index_page(State(state): State<AppState>) -> impl IntoResponse {
 // API handlers
 async fn create_alert(
     State(state): State<AppState>,
-    Json(payload): Json<CreateAlertRequest>,
+    headers: HeaderMap,
+    Json(mut payload): Json<CreateAlertRequest>,
 ) -> impl IntoResponse {
+    // 设置用户ID
+    payload.user_id = extract_user_id(&headers);
+    
+    // 演示模式检查用户预警数量限制
+    if let Ok(config) = config::Config::load() {
+        if config.demo.enabled {
+            match state.db.count_alerts_by_user(&payload.user_id).await {
+                Ok(count) if count >= config.demo.max_alerts_per_user as i64 => {
+                    return (
+                        StatusCode::TOO_MANY_REQUESTS,
+                        format!("演示模式：每个用户最多只能创建{}个预警", config.demo.max_alerts_per_user)
+                    ).into_response();
+                }
+                Err(e) => {
+                    tracing::error!("Failed to count user alerts: {}", e);
+                }
+                _ => {}
+            }
+        }
+    }
+    
     match state.db.create_alert(&payload).await {
         Ok(alert) => (StatusCode::CREATED, Json(AlertResponse::from(alert))).into_response(),
         Err(e) => {
@@ -139,8 +201,26 @@ async fn create_alert(
     }
 }
 
-async fn list_alerts(State(state): State<AppState>) -> impl IntoResponse {
-    match state.db.list_alerts().await {
+async fn list_alerts(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let user_id = extract_user_id(&headers);
+    
+    // 根据是否启用演示模式决定查询方式
+    let alerts_result = if let Ok(config) = config::Config::load() {
+        if config.demo.enabled {
+            // 演示模式：只返回该用户的预警
+            state.db.list_alerts_by_user(&user_id).await
+        } else {
+            // 非演示模式：返回所有预警（兼容原有行为）
+            state.db.list_alerts().await
+        }
+    } else {
+        state.db.list_alerts().await
+    };
+    
+    match alerts_result {
         Ok(alerts) => Json(
             alerts
                 .into_iter()
@@ -155,8 +235,27 @@ async fn list_alerts(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
-async fn get_alert(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {
-    match state.db.get_alert(id).await {
+async fn get_alert(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let user_id = extract_user_id(&headers);
+    
+    // 根据是否启用演示模式决定查询方式
+    let alert_result = if let Ok(config) = config::Config::load() {
+        if config.demo.enabled {
+            // 演示模式：只能查看自己的预警
+            state.db.get_alert_by_user(id, &user_id).await
+        } else {
+            // 非演示模式：可以查看任何预警
+            state.db.get_alert(id).await
+        }
+    } else {
+        state.db.get_alert(id).await
+    };
+    
+    match alert_result {
         Ok(Some(alert)) => Json(AlertResponse::from(alert)).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
         Err(e) => {
@@ -166,8 +265,27 @@ async fn get_alert(State(state): State<AppState>, Path(id): Path<i64>) -> impl I
     }
 }
 
-async fn delete_alert(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {
-    match state.db.delete_alert(id).await {
+async fn delete_alert(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let user_id = extract_user_id(&headers);
+    
+    // 根据是否启用演示模式决定删除方式
+    let delete_result = if let Ok(config) = config::Config::load() {
+        if config.demo.enabled {
+            // 演示模式：只能删除自己的预警
+            state.db.delete_alert_by_user(id, &user_id).await
+        } else {
+            // 非演示模式：可以删除任何预警
+            state.db.delete_alert(id).await
+        }
+    } else {
+        state.db.delete_alert(id).await
+    };
+    
+    match delete_result {
         Ok(true) => StatusCode::NO_CONTENT.into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),
         Err(e) => {
@@ -180,8 +298,29 @@ async fn delete_alert(State(state): State<AppState>, Path(id): Path<i64>) -> imp
 async fn update_alert(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-    Json(payload): Json<CreateAlertRequest>,
+    headers: HeaderMap,
+    Json(mut payload): Json<CreateAlertRequest>,
 ) -> impl IntoResponse {
+    let user_id = extract_user_id(&headers);
+    payload.user_id = user_id.clone();
+    
+    // 演示模式检查：只能更新自己的预警
+    if let Ok(config) = config::Config::load() {
+        if config.demo.enabled {
+            // 先检查预警是否属于该用户
+            match state.db.get_alert_by_user(id, &user_id).await {
+                Ok(None) => {
+                    return (StatusCode::NOT_FOUND, "Alert not found").into_response();
+                }
+                Err(e) => {
+                    tracing::error!("Failed to check alert ownership: {}", e);
+                    return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to check alert").into_response();
+                }
+                _ => {}
+            }
+        }
+    }
+    
     match state.db.update_alert(id, &payload).await {
         Ok(Some(alert)) => Json(AlertResponse::from(alert)).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "Alert not found").into_response(),

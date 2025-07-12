@@ -16,6 +16,12 @@
 - 依赖包问题
 - 生命周期错误
 
+### 🗄️ [SQLx 编译问题](./sqlx-compilation-issues.md)
+- 查询缓存缺失错误
+- 类型转换错误 
+- nullable 字段处理
+- 参数绑定问题
+
 ### 🌐 [API和网络问题](./api-issues.md)
 - API调用失败
 - 股票数据获取错误

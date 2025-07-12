@@ -46,6 +46,16 @@ pub struct EmailConfig {
     pub enabled: bool,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct DemoConfig {
+    pub enabled: bool,
+    pub max_alerts_per_user: u32,
+    pub data_retention_hours: u64,
+    pub disable_email: bool,
+    pub show_demo_banner: bool,
+    pub rate_limit_per_minute: u32,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
@@ -55,6 +65,19 @@ pub struct Config {
     pub scheduler: SchedulerConfig,
     pub price_fetcher: PriceFetcherConfig,
     pub email: EmailConfig,
+    #[serde(default = "default_demo_config")]
+    pub demo: DemoConfig,
+}
+
+fn default_demo_config() -> DemoConfig {
+    DemoConfig {
+        enabled: false,
+        max_alerts_per_user: 10,
+        data_retention_hours: 24,
+        disable_email: false,
+        show_demo_banner: false,
+        rate_limit_per_minute: 30,
+    }
 }
 
 impl Config {
@@ -106,6 +129,18 @@ impl Config {
             // Local development: 也建议使用 `data` 目录
             if !self.database.url.contains('/') && !self.database.url.contains('\\') {
                 self.database.url = "sqlite:data/trade_alert.db".to_string();
+            }
+        }
+
+        // 演示模式数据库处理
+        if self.demo.enabled {
+            self.database.url = "sqlite:data/demo_trade_alert.db".to_string();
+            tracing::info!("演示模式已启用，使用演示数据库: {}", self.database.url);
+            
+            // 演示模式强制禁用邮件
+            if self.demo.disable_email {
+                self.email.enabled = false;
+                tracing::info!("演示模式：邮件通知已禁用");
             }
         }
 

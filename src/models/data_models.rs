@@ -14,6 +14,12 @@ pub struct Alert {
     pub updated_at: NaiveDateTime,
     pub triggered_at: Option<NaiveDateTime>,
     pub notification_email: Option<String>,
+    #[serde(default = "default_user_id")]
+    pub user_id: String,
+}
+
+fn default_user_id() -> String {
+    "default".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, PartialEq)]
@@ -67,6 +73,8 @@ pub struct CreateAlertRequest {
     pub condition: AlertCondition,
     pub price: f64,
     pub notification_email: Option<String>,
+    #[serde(default = "default_user_id")]
+    pub user_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -80,6 +88,8 @@ pub struct AlertResponse {
     pub updated_at: NaiveDateTime,
     pub triggered_at: Option<NaiveDateTime>,
     pub notification_email: Option<String>,
+    #[serde(default = "default_user_id")]
+    pub user_id: String,
 }
 
 // 用于模板渲染的 Alert 结构体
@@ -127,6 +137,7 @@ impl From<Alert> for AlertResponse {
             updated_at: alert.updated_at,
             triggered_at: alert.triggered_at,
             notification_email: alert.notification_email,
+            user_id: alert.user_id,
         }
     }
 }

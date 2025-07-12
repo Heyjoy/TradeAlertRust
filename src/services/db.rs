@@ -42,18 +42,23 @@ impl Database {
         let condition = condition_str.as_str();
         let price = request.price;
         let notification_email = request.notification_email.as_deref();
+        let user_id = &request.user_id;
+        
         let alert = sqlx::query_as!(
             Alert,
             r#"
-            INSERT INTO alerts (symbol, condition, price, status, notification_email)
-            VALUES (?, ?, ?, 'active', ?)
-            RETURNING id, symbol, condition as "condition: _", price, 
-                     status as "status: _", created_at, updated_at, triggered_at, notification_email
+            INSERT INTO alerts (symbol, condition, price, status, notification_email, user_id)
+            VALUES (?, ?, ?, 'active', ?, ?)
+            RETURNING id as "id!", symbol, condition as "condition: _", price, 
+                     status as "status: _", created_at, updated_at, triggered_at, 
+                     notification_email, 
+                     COALESCE(user_id, 'default') as "user_id!"
             "#,
             symbol,
             condition,
             price,
             notification_email,
+            user_id,
         )
         .fetch_one(&self.pool)
         .await?;
@@ -65,11 +70,31 @@ impl Database {
         let alerts = sqlx::query_as!(
             Alert,
             r#"
-            SELECT id, symbol, condition as "condition: _", price, 
-                   status as "status: _", created_at, updated_at, triggered_at, notification_email
+            SELECT id as "id!", symbol, condition as "condition: _", price, 
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email,
+                   COALESCE(user_id, 'default') as "user_id!"
             FROM alerts
             ORDER BY created_at DESC
             "#
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(alerts)
+    }
+
+    pub async fn list_alerts_by_user(&self, user_id: &str) -> Result<Vec<Alert>> {
+        let alerts = sqlx::query_as!(
+            Alert,
+            r#"
+            SELECT id as "id!", symbol, condition as "condition: _", price, 
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email,
+                   COALESCE(user_id, 'default') as "user_id!"
+            FROM alerts
+            WHERE COALESCE(user_id, 'default') = ?
+            ORDER BY created_at DESC
+            "#,
+            user_id
         )
         .fetch_all(&self.pool)
         .await?;
@@ -81,12 +106,32 @@ impl Database {
         let alert = sqlx::query_as!(
             Alert,
             r#"
-            SELECT id, symbol, condition as "condition: _", price, 
-                   status as "status: _", created_at, updated_at, triggered_at, notification_email
+            SELECT id as "id!", symbol, condition as "condition: _", price, 
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email,
+                   COALESCE(user_id, 'default') as "user_id!"
             FROM alerts
             WHERE id = ?
             "#,
             id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(alert)
+    }
+
+    pub async fn get_alert_by_user(&self, id: i64, user_id: &str) -> Result<Option<Alert>> {
+        let alert = sqlx::query_as!(
+            Alert,
+            r#"
+            SELECT id as "id!", symbol, condition as "condition: _", price, 
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email,
+                   COALESCE(user_id, 'default') as "user_id!"
+            FROM alerts
+            WHERE id = ? AND COALESCE(user_id, 'default') = ?
+            "#,
+            id,
+            user_id
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -101,6 +146,21 @@ impl Database {
             WHERE id = ?
             "#,
             id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub async fn delete_alert_by_user(&self, id: i64, user_id: &str) -> Result<bool> {
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM alerts
+            WHERE id = ? AND user_id = ?
+            "#,
+            id,
+            user_id
         )
         .execute(&self.pool)
         .await?;
@@ -177,6 +237,53 @@ impl Database {
 
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    // 演示模式相关功能
+    pub async fn count_alerts_by_user(&self, user_id: &str) -> Result<i64> {
+        let count = sqlx::query_scalar!(
+            "SELECT COUNT(*) as count FROM alerts WHERE user_id = ?",
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count)
+    }
+
+    pub async fn cleanup_old_demo_data(&self, retention_hours: u64) -> Result<i64> {
+        let retention_hours_str = retention_hours.to_string();
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM alerts 
+            WHERE user_id != 'default' 
+            AND created_at < datetime('now', '-' || ? || ' hours')
+            "#,
+            retention_hours_str
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    pub async fn get_active_alerts_for_user(&self, user_id: &str) -> Result<Vec<Alert>> {
+        let alerts = sqlx::query_as!(
+            Alert,
+            r#"
+            SELECT id as "id!", symbol, condition as "condition: _", price, 
+                   status as "status: _", created_at, updated_at, triggered_at, notification_email,
+                   COALESCE(user_id, 'default') as "user_id!"
+            FROM alerts
+            WHERE COALESCE(user_id, 'default') = ? AND status = 'active'
+            ORDER BY created_at DESC
+            "#,
+            user_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(alerts)
     }
 }
 
