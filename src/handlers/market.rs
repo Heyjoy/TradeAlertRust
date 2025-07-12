@@ -1,11 +1,14 @@
-use axum::{
-    extract::{Path, State}, 
-    response::{Html, IntoResponse, Json},
-    http::StatusCode,
+use crate::{
+    models::Alert,
+    services::{Database, EmailNotifier},
 };
 use askama::Template;
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::{Html, IntoResponse, Json},
+};
 use serde_json;
-use crate::{services::{Database, EmailNotifier}, models::Alert};
 use std::sync::Arc;
 
 // 本地AppState定义 - 与main.rs中的结构相同
@@ -23,16 +26,20 @@ pub enum Market {
     Crypto, // 加密货币
 }
 
-impl Market {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Market {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "us" => Some(Market::US),
-            "cn" => Some(Market::CN),
-            "crypto" => Some(Market::Crypto),
-            _ => None,
+            "us" => Ok(Market::US),
+            "cn" => Ok(Market::CN),
+            "crypto" => Ok(Market::Crypto),
+            _ => Err(()),
         }
     }
+}
 
+impl Market {
     pub fn to_str(&self) -> &'static str {
         match self {
             Market::US => "us",
@@ -60,7 +67,7 @@ impl Market {
     pub fn flag_emoji(&self) -> &'static str {
         match self {
             Market::US => "🇺🇸",
-            Market::CN => "🇨🇳", 
+            Market::CN => "🇨🇳",
             Market::Crypto => "₿",
         }
     }
@@ -106,7 +113,7 @@ pub struct MarketTemplate {
 /// 首页导航中心处理器  
 pub async fn dashboard_handler(State(state): State<AppState>) -> impl IntoResponse {
     tracing::info!("Loading dashboard with real monitoring data");
-    
+
     // 查询真实的市场数据
     let markets = match get_real_market_summaries(&state).await {
         Ok(summaries) => summaries,
@@ -173,11 +180,11 @@ async fn get_real_market_summaries(state: &AppState) -> Result<Vec<MarketSummary
                     AND symbol NOT LIKE '%.SH'
                     AND symbol NOT LIKE 'BTC%'
                     AND symbol NOT LIKE 'ETH%'
-                    "#
+                    "#,
                 )
                 .fetch_one(state.db.pool())
                 .await?
-            },
+            }
             Market::CN => {
                 // A股：以 .SZ/.SS/.SH 结尾的股票
                 sqlx::query_scalar(
@@ -186,24 +193,29 @@ async fn get_real_market_summaries(state: &AppState) -> Result<Vec<MarketSummary
                     FROM alerts 
                     WHERE status = 'active' 
                     AND (symbol LIKE '%.SZ' OR symbol LIKE '%.SS' OR symbol LIKE '%.SH')
-                    "#
+                    "#,
                 )
                 .fetch_one(state.db.pool())
                 .await?
-            },
+            }
             Market::Crypto => {
-                // 加密货币：以常见币种开头
+                // 加密货币：更广泛的匹配模式
                 sqlx::query_scalar(
                     r#"
                     SELECT COUNT(*) 
                     FROM alerts 
                     WHERE status = 'active' 
-                    AND (symbol LIKE 'BTC%' OR symbol LIKE 'ETH%' OR symbol LIKE 'USDT%')
-                    "#
+                    AND (symbol LIKE 'BTC%' OR symbol LIKE 'ETH%' OR symbol LIKE 'USDT%' OR
+                         symbol LIKE 'BNB%' OR symbol LIKE 'ADA%' OR symbol LIKE 'SOL%' OR
+                         symbol LIKE 'DOGE%' OR symbol LIKE 'DOT%' OR symbol LIKE 'AVAX%' OR
+                         symbol LIKE 'SHIB%' OR symbol LIKE 'LTC%' OR symbol LIKE 'LINK%' OR
+                         symbol LIKE 'UNI%' OR symbol LIKE 'MATIC%' OR symbol LIKE 'TRX%' OR
+                         symbol LIKE '%USD' OR symbol LIKE '%USDT')
+                    "#,
                 )
                 .fetch_one(state.db.pool())
                 .await?
-            },
+            }
         };
 
         summaries.push(MarketSummary {
@@ -220,12 +232,11 @@ async fn get_real_market_summaries(state: &AppState) -> Result<Vec<MarketSummary
 /// 获取降级市场数据（基于实际数据库，而非假数据）
 async fn get_fallback_market_summaries(state: &AppState) -> Vec<MarketSummary> {
     // 至少查询总的活跃预警数量
-    let total_active = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM alerts WHERE status = 'active'"
-    )
-    .fetch_one(state.db.pool())
-    .await
-    .unwrap_or(0);
+    let total_active =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE status = 'active'")
+            .fetch_one(state.db.pool())
+            .await
+            .unwrap_or(0);
 
     vec![
         MarketSummary {
@@ -294,7 +305,7 @@ async fn get_breakout_signals_count(state: &AppState) -> i32 {
         FROM alerts 
         WHERE status = 'active'
         AND created_at > datetime('now', '-7 days')
-        "#
+        "#,
     )
     .fetch_one(state.db.pool())
     .await
@@ -305,55 +316,52 @@ async fn get_breakout_signals_count(state: &AppState) -> i32 {
 
 /// 获取市场状态
 fn get_market_status(market: &Market) -> String {
-    use chrono::{Utc, Timelike, Weekday, Datelike};
+    use chrono::{Datelike, Timelike, Utc, Weekday};
     let now = Utc::now();
-    
+
     match market {
         Market::US => {
             // 美股交易时间：北京时间 22:30-05:00 (夏令时) 或 23:30-06:00 (冬令时)
             // 简化处理，假设夏令时
             let beijing_time = now + chrono::Duration::hours(8);
             let weekday = beijing_time.weekday();
-            
+
             // 周末休市
             if weekday == Weekday::Sat || weekday == Weekday::Sun {
                 return "休市中".to_string();
             }
-            
+
             let hour = beijing_time.hour();
-            if hour >= 22 || hour < 6 {
+            if (6..22).contains(&hour) {
                 "开盘中".to_string()
             } else {
                 "休市中".to_string()
             }
-        },
+        }
         Market::CN => {
             // A股交易时间：工作日 9:30-11:30, 13:00-15:00
             let beijing_time = now + chrono::Duration::hours(8);
             let weekday = beijing_time.weekday();
-            
+
             // 周末休市
             if weekday == Weekday::Sat || weekday == Weekday::Sun {
                 return "休市中".to_string();
             }
-            
+
             let hour = beijing_time.hour();
             let minute = beijing_time.minute();
-            
-            let is_morning_session = (hour == 9 && minute >= 30) || 
-                                   hour == 10 || 
-                                   (hour == 11 && minute < 30);
-            
-            let is_afternoon_session = (hour == 13) || 
-                                     (hour == 14) || 
-                                     (hour == 15 && minute == 0);
-            
+
+            let is_morning_session =
+                (hour == 9 && minute >= 30) || hour == 10 || (hour == 11 && minute < 30);
+
+            let is_afternoon_session = (hour == 13) || (hour == 14) || (hour == 15 && minute == 0);
+
             if is_morning_session || is_afternoon_session {
                 "开盘中".to_string()
             } else {
                 "休市中".to_string()
             }
-        },
+        }
         Market::Crypto => "24h交易".to_string(),
     }
 }
@@ -370,9 +378,9 @@ pub async fn market_handler(
     Path(market_str): Path<String>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
-    let market = match Market::from_str(&market_str) {
-        Some(m) => m,
-        None => return (StatusCode::NOT_FOUND, "Market not found").into_response(),
+    let market = match market_str.parse::<Market>() {
+        Ok(m) => m,
+        Err(_) => return (StatusCode::NOT_FOUND, "Market not found").into_response(),
     };
 
     tracing::info!("访问 {:?} 市场页面", market);
@@ -383,15 +391,20 @@ pub async fn market_handler(
     )
     .fetch_all(state.db.pool())
     .await;
-    
+
     match &all_alerts {
         Ok(alerts) => {
             tracing::info!("数据库中共有 {} 个警报", alerts.len());
             for alert in alerts {
-                tracing::info!("  - ID: {}, Symbol: {}, Status: {}, Price: ${:.2}", 
-                    alert.id, alert.symbol, alert.status, alert.price);
+                tracing::info!(
+                    "  - ID: {}, Symbol: {}, Status: {}, Price: ${:.2}",
+                    alert.id,
+                    alert.symbol,
+                    alert.status,
+                    alert.price
+                );
             }
-        },
+        }
         Err(e) => tracing::error!("查询所有警报失败: {}", e),
     }
 
@@ -423,7 +436,7 @@ pub async fn market_handler(
 /// 获取特定市场的预警
 async fn get_market_alerts(state: &AppState, market: &Market) -> Result<Vec<Alert>, sqlx::Error> {
     tracing::info!("查询 {:?} 市场的警报", market);
-    
+
     let alerts = match market {
         Market::US => {
             // 美股：不包含 .SZ/.SS/.SH 后缀的股票，且不包含加密货币
@@ -443,14 +456,18 @@ async fn get_market_alerts(state: &AppState, market: &Market) -> Result<Vec<Aler
             )
             .fetch_all(state.db.pool())
             .await?;
-            
+
             tracing::info!("美股市场查询到 {} 个活跃警报", alerts.len());
             for alert in &alerts {
-                tracing::info!("  - Symbol: {}, Price: ${:.2}, Condition: {}", 
-                    alert.symbol, alert.price, alert.condition);
+                tracing::info!(
+                    "  - Symbol: {}, Price: ${:.2}, Condition: {}",
+                    alert.symbol,
+                    alert.price,
+                    alert.condition
+                );
             }
             alerts
-        },
+        }
         Market::CN => {
             // A股：以 .SZ/.SS/.SH 结尾的股票
             let alerts = sqlx::query_as::<_, Alert>(
@@ -464,27 +481,32 @@ async fn get_market_alerts(state: &AppState, market: &Market) -> Result<Vec<Aler
             )
             .fetch_all(state.db.pool())
             .await?;
-            
+
             tracing::info!("A股市场查询到 {} 个活跃警报", alerts.len());
             alerts
-        },
+        }
         Market::Crypto => {
-            // 加密货币：以常见币种开头
+            // 加密货币：更广泛的匹配模式
             let alerts = sqlx::query_as::<_, Alert>(
                 r#"
                 SELECT id, symbol, condition, price, status, created_at, updated_at, triggered_at, notification_email
                 FROM alerts 
                 WHERE status = 'active' 
-                AND (symbol LIKE 'BTC%' OR symbol LIKE 'ETH%' OR symbol LIKE 'USDT%')
+                AND (symbol LIKE 'BTC%' OR symbol LIKE 'ETH%' OR symbol LIKE 'USDT%' OR
+                     symbol LIKE 'BNB%' OR symbol LIKE 'ADA%' OR symbol LIKE 'SOL%' OR
+                     symbol LIKE 'DOGE%' OR symbol LIKE 'DOT%' OR symbol LIKE 'AVAX%' OR
+                     symbol LIKE 'SHIB%' OR symbol LIKE 'LTC%' OR symbol LIKE 'LINK%' OR
+                     symbol LIKE 'UNI%' OR symbol LIKE 'MATIC%' OR symbol LIKE 'TRX%' OR
+                     symbol LIKE '%USD' OR symbol LIKE '%USDT')
                 ORDER BY created_at DESC
                 "#
             )
             .fetch_all(state.db.pool())
             .await?;
-            
+
             tracing::info!("加密货币市场查询到 {} 个活跃警报", alerts.len());
             alerts
-        },
+        }
     };
 
     Ok(alerts)
@@ -492,10 +514,10 @@ async fn get_market_alerts(state: &AppState, market: &Market) -> Result<Vec<Aler
 
 /// 计算下次市场事件
 fn calculate_next_market_event(market: &Market) -> String {
-    use chrono::{Utc, Timelike, Weekday, Datelike};
+    use chrono::{Datelike, Timelike, Utc, Weekday};
     let now = Utc::now();
     let beijing_time = now + chrono::Duration::hours(8);
-    
+
     match market {
         Market::US => {
             let weekday = beijing_time.weekday();
@@ -503,13 +525,13 @@ fn calculate_next_market_event(market: &Market) -> String {
                 "周一22:30开盘".to_string()
             } else {
                 let hour = beijing_time.hour();
-                if hour >= 22 || hour < 6 {
+                if !(6..22).contains(&hour) {
                     "6小时后收盘".to_string()
                 } else {
                     "今晚22:30开盘".to_string()
                 }
             }
-        },
+        }
         Market::CN => {
             let weekday = beijing_time.weekday();
             if weekday == Weekday::Sat || weekday == Weekday::Sun {
@@ -517,18 +539,18 @@ fn calculate_next_market_event(market: &Market) -> String {
             } else {
                 let hour = beijing_time.hour();
                 let minute = beijing_time.minute();
-                
+
                 if hour < 9 || (hour == 9 && minute < 30) {
                     "今日9:30开盘".to_string()
                 } else if hour >= 15 {
                     "明日9:30开盘".to_string()
-                } else if hour >= 11 && hour < 13 {
+                } else if (11..13).contains(&hour) {
                     "13:00开盘".to_string()
                 } else {
                     "15:00收盘".to_string()
                 }
             }
-        },
+        }
         Market::Crypto => "持续交易中".to_string(),
     }
 }
@@ -546,7 +568,7 @@ pub async fn get_stock_price(
         WHERE symbol = ?
         ORDER BY date DESC, created_at DESC
         LIMIT 1
-        "#
+        "#,
     )
     .bind(&symbol)
     .fetch_optional(state.db.pool())
@@ -560,7 +582,7 @@ pub async fn get_stock_price(
                 "status": "success"
             });
             Json(price_info).into_response()
-        },
+        }
         Ok(None) => {
             let error_info = serde_json::json!({
                 "symbol": symbol,
@@ -568,7 +590,7 @@ pub async fn get_stock_price(
                 "status": "error"
             });
             (StatusCode::NOT_FOUND, Json(error_info)).into_response()
-        },
+        }
         Err(e) => {
             tracing::error!("Failed to fetch price for {}: {}", symbol, e);
             let error_info = serde_json::json!({

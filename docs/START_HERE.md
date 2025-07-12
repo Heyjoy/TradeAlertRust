@@ -226,6 +226,7 @@ scripts/development/end_work_session.bat
 ### **🏗️ 架构和设计**
 - **[项目架构文档](PROJECT_ARCHITECTURE.md)** - 完整系统架构和技术栈
 - **[AI协作工作流程](ai-collaboration-workflow.md)** - 详细协作流程指南
+- **[AI协作经验沉淀](dev/ai-collaboration-insights.md)** - 实战协作心得和最佳实践
 - **[配置管理规则](technical/CONFIGURATION_MANAGEMENT.md)** - 配置规范
 
 ### **📊 项目管理**

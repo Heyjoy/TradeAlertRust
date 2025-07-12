@@ -4,5 +4,4 @@
 pub mod market;
 pub mod strategy;
 
-pub use market::*;
 pub use strategy::*;

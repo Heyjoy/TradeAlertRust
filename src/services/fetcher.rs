@@ -244,7 +244,7 @@ impl PriceService {
     async fn fetch_china_stock_price(&self, symbol: &str) -> Result<StockPrice> {
         // 转换股票代码格式
         let sina_symbol = self.convert_to_sina_format(symbol);
-        let url = format!("https://hq.sinajs.cn/list={}", sina_symbol);
+        let url = format!("https://hq.sinajs.cn/list={sina_symbol}");
 
         info!("Fetching A-share price for {} from Sina Finance", symbol);
 
@@ -288,7 +288,7 @@ impl PriceService {
     // 腾讯财经API作为A股数据的备用源
     async fn fetch_china_stock_price_tencent(&self, symbol: &str) -> Result<StockPrice> {
         let tencent_symbol = self.convert_to_tencent_format(symbol);
-        let url = format!("https://qt.gtimg.cn/q={}", tencent_symbol);
+        let url = format!("https://qt.gtimg.cn/q={tencent_symbol}");
 
         info!(
             "Fetching A-share price for {} from Tencent Finance (fallback)",
@@ -335,10 +335,7 @@ impl PriceService {
 
     // 获取美股价格 - 保持原有的Yahoo Finance API
     async fn fetch_us_stock_price(&self, symbol: &str) -> Result<StockPrice> {
-        let url = format!(
-            "https://query1.finance.yahoo.com/v8/finance/chart/{}",
-            symbol
-        );
+        let url = format!("https://query1.finance.yahoo.com/v8/finance/chart/{symbol}");
 
         info!("Fetching US stock price for {} from Yahoo Finance", symbol);
 
@@ -516,7 +513,7 @@ impl PriceService {
             price: new_price,
             volume: (rand::random::<i64>() % 10000) + 1000, // 1000-11000之间的随机成交量
             timestamp: Utc::now(),
-            name_en: Some(format!("{} Corporation", symbol)), // 为模拟数据提供一个通用公司名
+            name_en: Some(format!("{symbol} Corporation")), // 为模拟数据提供一个通用公司名
         })
     }
 
