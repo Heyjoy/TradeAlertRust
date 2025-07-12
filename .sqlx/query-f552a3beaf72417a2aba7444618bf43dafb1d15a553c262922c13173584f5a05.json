@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT close_price as price\n            FROM price_history\n            WHERE symbol = ?\n            ORDER BY date DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "price",
+        "ordinal": 0,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f552a3beaf72417a2aba7444618bf43dafb1d15a553c262922c13173584f5a05"
+}

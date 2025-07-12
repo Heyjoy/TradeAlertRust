@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                        INSERT OR REPLACE INTO price_history (symbol, date, open_price, high_price, low_price, close_price, volume, created_at)\n                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n                        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "9a6270e3d7f5bcabec3878753b8cc93f1861458dcb368c224abe4491d6e8880c"
+}

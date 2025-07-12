@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM alerts \n            WHERE user_id != 'default' \n            AND created_at < datetime('now', '-' || ? || ' hours')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "5c0af134da45f46ea6d68237f1587bab4aefe62b46db55c4f096d6784e7b2b87"
+}

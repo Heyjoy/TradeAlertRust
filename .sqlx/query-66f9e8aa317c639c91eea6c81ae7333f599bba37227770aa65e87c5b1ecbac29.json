@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT symbol, name_en, name_cn, sector, exchange\n        FROM us_stocks \n        WHERE status = 'active' \n        AND (\n            UPPER(symbol) LIKE ?1 OR \n            UPPER(name_en) LIKE ?1 OR \n            name_cn LIKE ?2\n        )\n        ORDER BY \n            CASE \n                WHEN UPPER(symbol) = UPPER(?3) THEN 1\n                WHEN UPPER(symbol) LIKE ?1 THEN 2\n                WHEN UPPER(name_en) LIKE ?1 THEN 3\n                ELSE 4\n            END\n        LIMIT 5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "symbol",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name_en",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name_cn",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "sector",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "exchange",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "66f9e8aa317c639c91eea6c81ae7333f599bba37227770aa65e87c5b1ecbac29"
+}

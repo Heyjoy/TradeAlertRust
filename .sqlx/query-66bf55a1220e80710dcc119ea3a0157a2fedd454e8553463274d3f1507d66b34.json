@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT close_price as price, volume, date, created_at\n        FROM price_history\n        WHERE symbol = ?\n        ORDER BY date DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "price",
+        "ordinal": 0,
+        "type_info": "Float"
+      },
+      {
+        "name": "volume",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "date",
+        "ordinal": 2,
+        "type_info": "Date"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "66bf55a1220e80710dcc119ea3a0157a2fedd454e8553463274d3f1507d66b34"
+}

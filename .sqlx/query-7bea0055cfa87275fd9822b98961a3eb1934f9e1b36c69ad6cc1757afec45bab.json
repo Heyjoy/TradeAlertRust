@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT id as \"id!\", symbol, condition as \"condition: _\", price, \n                   status as \"status: _\", created_at, updated_at, triggered_at, notification_email,\n                   COALESCE(user_id, 'default') as \"user_id!\"\n            FROM alerts\n            WHERE COALESCE(user_id, 'default') = ?\n            ORDER BY created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "symbol",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "condition: _",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "price",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "status: _",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "triggered_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "notification_email",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id!",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "7bea0055cfa87275fd9822b98961a3eb1934f9e1b36c69ad6cc1757afec45bab"
+}

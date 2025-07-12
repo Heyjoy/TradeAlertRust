@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            DELETE FROM alerts\n            WHERE id = ? AND user_id = ?\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "0c8cf618683c4a76b56e192a9c902bbf315c18f013849b1ea1b94cc18d5a4538"
+}

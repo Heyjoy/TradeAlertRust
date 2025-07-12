@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT symbol, strategy_type, signal_strength, description, key_levels, created_at\n            FROM strategy_signals \n            ORDER BY created_at DESC \n            LIMIT ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "symbol",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "strategy_type",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "signal_strength",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "key_levels",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "e47facc043667298ae0ab6bca33a7a89dcf3ead9142c339448cb560d8be83452"
+}

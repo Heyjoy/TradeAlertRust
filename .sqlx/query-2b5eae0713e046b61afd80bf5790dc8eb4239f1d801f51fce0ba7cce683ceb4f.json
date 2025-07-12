@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO strategy_signals \n            (symbol, strategy_type, signal_strength, trigger_price, key_levels, description)\n            VALUES (?, ?, ?, ?, ?, ?)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "2b5eae0713e046b61afd80bf5790dc8eb4239f1d801f51fce0ba7cce683ceb4f"
+}

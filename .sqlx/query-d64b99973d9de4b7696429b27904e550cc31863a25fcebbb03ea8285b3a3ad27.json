@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT symbol, code, exchange, name_cn, name_en, pinyin, pinyin_short, industry\n        FROM cn_stocks \n        WHERE status = 'active' \n        AND (\n            symbol LIKE ?1 OR \n            code LIKE ?1 OR \n            name_cn LIKE ?1 OR \n            pinyin LIKE ?1 OR \n            pinyin_short LIKE ?1\n        )\n        ORDER BY \n            CASE \n                WHEN symbol = ?2 THEN 1\n                WHEN code = ?2 THEN 2\n                WHEN name_cn = ?2 THEN 3\n                WHEN symbol LIKE ?1 THEN 4\n                WHEN code LIKE ?1 THEN 5\n                WHEN name_cn LIKE ?1 THEN 6\n                ELSE 7\n            END\n        LIMIT 5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "symbol",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "code",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "exchange",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "name_cn",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "name_en",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "pinyin",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "pinyin_short",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "industry",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "d64b99973d9de4b7696429b27904e550cc31863a25fcebbb03ea8285b3a3ad27"
+}
