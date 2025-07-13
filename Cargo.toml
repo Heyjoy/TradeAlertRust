@@ -4,14 +4,6 @@ version = "0.1.0"
 edition = "2021"
 default-run = "trade_alert_rust"
 
-# Profile optimizations for faster builds
-[profile.release]
-# Disable LTO for faster builds on CI
-lto = false
-# Use more codegen units for parallel compilation
-codegen-units = 16
-# Reduce debug info to speed up linking
-debug = false
 
 [[bin]]
 name = "trade_alert_rust"
@@ -68,6 +60,11 @@ lettre = { version = "0.11", default-features = false, features = ["smtp-transpo
 [dev-dependencies]
 tokio-test = "0.4"
 
+# Profile optimizations for faster Railway builds
 [profile.release]
-lto = true
-codegen-units = 1 
+# Disable LTO for faster builds on CI (Railway)
+lto = false
+# Use more codegen units for parallel compilation  
+codegen-units = 16
+# Reduce debug info to speed up linking
+debug = false 
