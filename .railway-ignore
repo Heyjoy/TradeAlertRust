@@ -46,7 +46,9 @@ target/tmp/
 # Environment and config examples (keep only necessary ones)
 config/_env.example
 config/*.example
-deploy/
+deploy/docker/
+deploy/nginx/
+deploy/synology/
 
 # Documentation files
 *.md

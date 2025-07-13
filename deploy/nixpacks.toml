@@ -20,9 +20,13 @@ ignoredPaths = [
 ]
 
 [phases.build]
-# Use faster linker and build optimizations
+# Use faster linker and build optimizations for Railway
 cmds = [
   "export CARGO_PROFILE_RELEASE_LTO=false",
-  "export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16", 
-  "cargo build --release --bin trade_alert_rust"
+  "export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16",
+  "export CARGO_PROFILE_RELEASE_PANIC=abort",
+  "export CARGO_PROFILE_RELEASE_STRIP=true",
+  "export SQLX_OFFLINE=true",
+  "export CARGO_NET_GIT_FETCH_WITH_CLI=true",
+  "cargo build --release --bin trade_alert_rust --jobs 2"
 ] 

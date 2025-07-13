@@ -25,7 +25,11 @@
       "WebFetch(domain:github.com)",
       "Bash(toml:*)",
       "Bash(pwsh:*)",
-      "Bash(./scripts/quick-check.sh:*)"
+      "Bash(./scripts/quick-check.sh:*)",
+      "Bash(wsl:*)",
+      "Bash(dmesg:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

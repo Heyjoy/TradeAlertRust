@@ -6,6 +6,7 @@ COPY . .
 
 # 构建优化配置
 ENV CARGO_TERM_COLOR=never
+ENV SQLX_OFFLINE=true
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
