@@ -30,7 +30,8 @@
       "Bash(dmesg:*)",
       "Bash(echo:*)",
       "Bash(cat:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
