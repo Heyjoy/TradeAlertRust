@@ -18,7 +18,9 @@
       "Bash(rg:*)",
       "Bash(find:*)",
       "WebFetch(domain:your-app.railway.app)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
