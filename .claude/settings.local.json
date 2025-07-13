@@ -29,7 +29,8 @@
       "Bash(wsl:*)",
       "Bash(dmesg:*)",
       "Bash(echo:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(docker build:*)"
     ],
     "deny": []
   }
