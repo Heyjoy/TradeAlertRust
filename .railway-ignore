@@ -1,0 +1,53 @@
+# Railway build optimization - ignore large directories and files
+
+# Development and documentation
+docs/
+scripts/
+tasks/
+tools/
+benchmarks/
+examples/
+
+# Test files  
+tests/
+test_*.html
+*.test.*
+
+# IDE and development files
+.cursor/
+.claude/
+.vscode/
+.idea/
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# Large media and backup files
+*.mp4
+*.avi
+*.zip
+*.tar.gz
+migrations/backup/
+static/backup/
+data/backup/
+
+# Git and version control
+.git/
+.gitignore
+
+# Build artifacts
+target/debug/
+target/tmp/
+
+# Environment and config examples (keep only necessary ones)
+config/_env.example
+config/*.example
+deploy/
+
+# Documentation files
+*.md
+README*

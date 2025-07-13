@@ -12,5 +12,17 @@ ignoredPaths = [
   ".git/",
   ".cursor/",
   ".claude/",
-  "tasks/"
+  "tasks/",
+  "tests/",
+  "tools/",
+  "benchmarks/",
+  "examples/"
+]
+
+[phases.build]
+# Use faster linker and build optimizations
+cmds = [
+  "export CARGO_PROFILE_RELEASE_LTO=false",
+  "export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16", 
+  "cargo build --release --bin trade_alert_rust"
 ] 
