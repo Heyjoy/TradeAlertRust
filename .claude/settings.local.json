@@ -31,7 +31,8 @@
       "Bash(echo:*)",
       "Bash(cat:*)",
       "Bash(docker build:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "WebFetch(domain:docs.railway.com)"
     ],
     "deny": []
   }
