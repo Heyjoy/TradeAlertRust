@@ -32,10 +32,7 @@ pub async fn strategy_handler(State(app_state): State<AppState>) -> impl IntoRes
     let analyzer = StrategyAnalyzer::new(app_state.db.pool().clone());
 
     // 获取最近的策略信号
-    let recent_signals = match analyzer.get_recent_signals(20).await {
-        Ok(signals) => signals,
-        Err(_) => vec![],
-    };
+    let recent_signals = analyzer.get_recent_signals(20).await.unwrap_or_default();
 
     // 转换为模板所需的格式
     let mut cn_signals = Vec::new();
