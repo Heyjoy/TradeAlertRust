@@ -51,6 +51,9 @@ target/debug/
 # Keep Cargo.lock for reproducible builds in production
 # Cargo.lock
 
+# Ensure SQLx cache is included for offline builds
+!.sqlx/
+
 # Large directories that slow build
 migrations/backup/
 static/backup/
