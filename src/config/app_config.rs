@@ -36,13 +36,21 @@ pub struct PriceFetcherConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct EmailConfig {
+    #[serde(default = "default_smtp_server")]
     pub smtp_server: String,
+    #[serde(default = "default_smtp_port")]
     pub smtp_port: u16,
+    #[serde(default = "default_email")]
     pub smtp_username: String,
+    #[serde(default = "default_password")]
     pub smtp_password: String,
+    #[serde(default = "default_email")]
     pub from_email: String,
+    #[serde(default = "default_from_name")]
     pub from_name: String,
+    #[serde(default = "default_email")]
     pub to_email: String,
+    #[serde(default = "default_email_enabled")]
     pub enabled: bool,
 }
 
@@ -80,20 +88,44 @@ fn default_demo_config() -> DemoConfig {
     }
 }
 
+// EmailConfig默认值函数
+fn default_smtp_server() -> String {
+    "smtp.gmail.com".to_string()
+}
+
+fn default_smtp_port() -> u16 {
+    587
+}
+
+fn default_email() -> String {
+    "change@me.com".to_string()
+}
+
+fn default_password() -> String {
+    "change_me_password".to_string()
+}
+
+fn default_from_name() -> String {
+    "TradeAlert".to_string()
+}
+
+fn default_email_enabled() -> bool {
+    true
+}
+
 impl Config {
     pub fn load() -> anyhow::Result<Self> {
         let config = config::Config::builder()
-            // 1. 首先加载默认配置模板（新位置）
-            .add_source(config::File::with_name("config/config.toml.example").required(false))
-            // 2. 然后加载本地配置（如果存在）
+            // 1. 加载本地配置文件（如果存在）
             .add_source(config::File::with_name("config/config.local").required(false))
-            // 3. 最后加载主配置文件（如果存在）
+            // 2. 加载主配置文件（如果存在）
             .add_source(config::File::with_name("config/config").required(false))
-            // 4. 为了向后兼容，也检查根目录的配置文件
-            .add_source(config::File::with_name("config.toml.example").required(false))
+            .add_source(config::File::with_name("config/config.toml").required(false))
+            // 3. 为了向后兼容，也检查根目录的配置文件
             .add_source(config::File::with_name("config.local").required(false))
             .add_source(config::File::with_name("config").required(false))
-            // 5. 环境变量具有最高优先级 - 使用双下划线作为分隔符避免字段名冲突
+            .add_source(config::File::with_name("config.toml").required(false))
+            // 4. 环境变量具有最高优先级 - 使用双下划线作为分隔符
             .add_source(config::Environment::with_prefix("TRADE_ALERT").separator("__"))
             .build()?;
 
